@@ -5,6 +5,7 @@ import character2 from "../../assets/character2.png";
 import character3 from "../../assets/character3.png";
 import character4 from "../../assets/character4.png"
 const charArray = ["char1", "char2", "char3", "char4"];
+const bioArray = ["My name is merlin \n I am wizard", "I am a mage", "I am a warrior", "I am dead"];
 
 export default class characterSceneSolo extends Phaser.Scene {
   constructor() {
@@ -39,8 +40,15 @@ export default class characterSceneSolo extends Phaser.Scene {
         color: "#d8d8ff",
       })
       .setOrigin(0.5);
-
+    let bioText = this.add
+    .text(950, 325, `BIO:\n ${bioArray[0]}`,
+      {
+        fontSize: "32px",
+        color: "#d8d8ff",
+      }
+    ).setOrigin(0.5);
     const buttonColor = "rgba(187, 12, 240, 0.68)";
+    const disabledButton = "rgba(187,12,240,0.3)"	  
     const nextButton = this.add
       .text(this.scale.width / 2 + 250, 450, "Next", {
         fontSize: "54px",
@@ -51,19 +59,56 @@ export default class characterSceneSolo extends Phaser.Scene {
     const prevButton = this.add
       .text(this.scale.width / 2 - 320, 450, "Previous", {
         fontSize: "54px",
-        color: buttonColor,
+        color: disabledButton,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5).setInteractive({useHandCursor:true});
+    const submitButton = this.add
+    .text(this.scale.width / 2, 675, "Select Character",
+      {
+        fontSize: "54px",
+        color: "rgb(139, 132, 132)"
+      }
+    ).setOrigin(0.5).setInteractive({useHandCursor:true})
     let counter = 0;
     let currentCharacter = this.loadCharacter(charArray[counter]);	  
     nextButton.on("pointerdown", () => {
       console.log("pointer down pressed");
+      if (counter >= charArray.length - 1)
+	    {
+		    nextButton.setColor(disabledButton);
+		    return ;
+	    }
       if (currentCharacter)
-	    currentCharacter.destroy();
+	      currentCharacter.destroy();
       counter += 1;
+      bioText.setText(`BIO:\n ${bioArray[counter]}`);
+      prevButton.setColor(buttonColor)
       currentCharacter = this.loadCharacter(charArray[counter]);
     });
-
+    prevButton.on("pointerdown", () => {
+      console.log("pointer down pressed");
+      if (counter <= 0)
+	    {
+        prevButton.setColor(disabledButton)
+        
+		    return ;
+	    }
+      if (counter > 0)
+      {
+      prevButton.setColor(buttonColor);
+      
+      }
+      if (currentCharacter)
+	      currentCharacter.destroy();
+      counter -= 1;
+      nextButton.setColor(buttonColor);
+      bioText.setText(`BIO:\n ${bioArray[counter]}`);
+      currentCharacter = this.loadCharacter(charArray[counter]);
+    });
+     submitButton.on("pointerdown", () =>
+    {
+      console.log(counter);
+    })
   
   }
 }
