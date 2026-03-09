@@ -34,7 +34,7 @@ export default class characterSceneSolo extends Phaser.Scene {
     bg.setScale(Math.max(scaleX, scaleY));
 
     const title = this.add
-      .text(this.scale.width / 2, 175, "characterSelectScene", {
+      .text(this.scale.width / 2, 175, "Choose your Character", {
         fontSize: "72px",
         color: "#d8d8ff",
       })
