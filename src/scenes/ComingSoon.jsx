@@ -3,10 +3,11 @@ import background from '../assets/background.png';
 import backgroundmp3 from '../assets/background.mp3';
 import createMuteToggle from '../game/ui/BackgroundMusicToggle';
 import mute from '../assets/mute.png';
+import healthBar from '../game/ui/HealthBar';
 
 export default class ComingSoon extends Phaser.Scene {
 	constructor() {
-		super('ComingSoon');
+		super(ComingSoon);
 	}
 
 	preload() {
@@ -19,7 +20,7 @@ export default class ComingSoon extends Phaser.Scene {
 		this.createBackground();
 		this.createList();
 		createMuteToggle(this, 'backgroundmp3');
-		this.createHealthBar();
+		healthBar(this, 1000);
 
 		this.add
 			.text(this.scale.width / 2, 100, 'Coming Soon ...', {
@@ -115,40 +116,5 @@ export default class ComingSoon extends Phaser.Scene {
 				},
 			)
 			.setOrigin(0.5);
-	}
-
-	createHealthBar() {
-		this.add.rectangle(500, 700, 205, 55, 0x000000);
-		const currentHealth = this.add.rectangle(500, 700, 200, 50, 0xff0000);
-
-		const attackButton = this.add
-			.text(this.scale.width / 2, 650, 'Attack', {
-				fontSize: '32px',
-				color: '#FFFFFF',
-				backgroundColor: '#494949',
-				fontFamily: 'Blackletter',
-			})
-			.setOrigin(0.5);
-
-		attackButton.setInteractive({ useHandCursor: true });
-		attackButton.on('pointerdown', () => {
-			const damage = 30;
-			if (currentHealth.width - damage > 0) {
-				this.tweens.add({
-					targets: currentHealth,
-					width: currentHealth.width - damage,
-					duration: 500,
-					ease: 'Sine.easeInOut',
-				});
-			} else if (currentHealth.width - damage <= 0) {
-				this.tweens.add({
-					targets: currentHealth,
-					width: 0,
-					duration: 500,
-					ease: 'Sine.easeInOut',
-				});
-			}
-			console.log('attack button is pressed');
-		});
 	}
 }
