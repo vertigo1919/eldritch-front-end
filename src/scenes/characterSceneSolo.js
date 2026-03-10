@@ -1,7 +1,7 @@
 import Phaser from "phaser";
-import backgroundImage from "../../assets/background.png";
+import backgroundImage from "../assets/background.png";
 
-const characters = import.meta.glob("../../assets/character[0-9]*.png", {
+const characters = import.meta.glob("../assets/character[0-9]*.png", {
   eager: true,
 });
 

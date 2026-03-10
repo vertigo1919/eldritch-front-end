@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import characterSceneSolo from "./scenes/characterSceneSolo";
+import characterSceneSolo from "../scenes/characterSceneSolo";
 import HomePage from "../scenes/HomePage";
 import ComingSoon from "../scenes/ComingSoon";
 

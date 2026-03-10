@@ -5,7 +5,7 @@ import mute from "../assets/mute.png";
 
 export default class HomePage extends Phaser.Scene {
   constructor() {
-    super(HomePage);
+    super("HomePage");
   }
 
   preload() {
