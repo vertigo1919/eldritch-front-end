@@ -123,6 +123,7 @@ title.setShadow(4, 4, "#000000", 8, true, true);
     });
     submitButton.on("pointerdown", () => {
       console.log(counter);
+      this.scene.start("EncounterScene");
     });
   }
 }
