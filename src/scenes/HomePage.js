@@ -49,7 +49,6 @@ export default class HomePage extends Phaser.Scene {
 
     soloButton.setInteractive({ useHandCursor: true });
     soloButton.on("pointerdown", () => {
-      console.log("solo button is pressed");
       this.scene.start("characterSceneSolo")
     });
   }
@@ -66,7 +65,6 @@ export default class HomePage extends Phaser.Scene {
 
     teamButton.setInteractive({ useHandCursor: true });
     teamButton.on("pointerdown", () => {
-      console.log(" team button is pressed");
     });
   }
 }
