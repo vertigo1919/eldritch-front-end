@@ -91,7 +91,6 @@ export default class HomePage extends Phaser.Scene {
 
     teamButton.setInteractive({ useHandCursor: true });
     teamButton.on("pointerdown", () => {
-      console.log("team button is pressed");
     });
   }
 }

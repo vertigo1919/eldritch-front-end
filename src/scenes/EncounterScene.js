@@ -4,6 +4,9 @@ import { createEncounterUI } from "../game/ui/encounterUi";
 import { characters } from "../game/data/characterData";
 import { monsters } from "../game/data/monsterData";
 import { questions } from "../game/data/questionData";
+import backgroundmp3 from "../assets/background.mp3";
+import createMuteToggle from "../game/ui/BackgroundMusicToggle";
+import mute from "../assets/mute.png";
 
 export default class EncounterScene extends Phaser.Scene {
   constructor() {
@@ -34,6 +37,8 @@ export default class EncounterScene extends Phaser.Scene {
 
   preload() {
     this.load.image("bg", backgroundImg);
+    this.load.audio("backgroundmp3", backgroundmp3);
+    this.load.image("mute", mute);
   }
 
   create() {
