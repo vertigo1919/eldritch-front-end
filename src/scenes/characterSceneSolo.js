@@ -123,7 +123,12 @@ title.setShadow(4, 4, "#000000", 8, true, true);
     });
     submitButton.on("pointerdown", () => {
       console.log(counter);
-      this.scene.start("EncounterScene");
+      this.scene.start("EncounterScene", 
+      {
+        selectedIndex: index,
+        mode: "solo",
+        difficulty: "easy"
+      });
     });
   }
 }
