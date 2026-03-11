@@ -1,4 +1,4 @@
-[
+export const questions = [
   {
     question_id: 1,
     prompt: 'Which is the second largest native language spoken in Spain by numbers of speakers?',

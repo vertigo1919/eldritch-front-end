@@ -12,28 +12,36 @@ export function createEncounterUI(scene, opts = {}) {
     color: "#ffffff",
   });
 
+  const panelHeight = 220;
+  const panelY = height - 120;
+  const panelTop = panelY - panelHeight / 2;
+
   ui.panel = scene.add
-    .rectangle(width / 2, height - 90, width - 80, 190, 0x000000, 0.45)
+    .rectangle(width / 2, panelY, width - 80, panelHeight, 0x000000, 0.45)
     .setStrokeStyle(2, 0x666666, 0.7);
 
-  ui.questionText = scene.add.text(80, height - 160, "", {
+  ui.questionText = scene.add.text(80, panelTop + 15, "", {
     fontSize: "26px",
     color: "#d8d8ff",
     wordWrap: { width: width - 420 },
   });
 
-  ui.timerText = scene.add.text(width - 240, height - 160, "", {
+  ui.timerText = scene.add.text(width - 240, panelTop + 15, "", {
     fontSize: "26px",
     color: "#d8d8ff",
   });
 
   ui.answerButtons = [];
 
+  const answerStartY = panelTop + 75;
+  const answerGap = 30;
+
   for (let i = 0; i < 4; i++) {
     const btn = scene.add
-      .text(90, height - 110 + i * 38, "", {
+      .text(90, answerStartY + i * answerGap, "", {
         fontSize: "22px",
         color: "#ffffff",
+        wordWrap: { width: width - 180 },
       })
       .setInteractive({ useHandCursor: true })
       .on("pointerover", () => btn.setAlpha(0.8))
