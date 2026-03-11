@@ -5,7 +5,7 @@ export default function createMuteToggle(scene, music) {
   let musicIsPlaying = true;
 
   const muteBackground = scene.add
-    .image(1200, 680, "mute", {
+    .image(1250, 30, "mute", {
       width: "50px",
       height: "50px",
       color: "#ffffff",

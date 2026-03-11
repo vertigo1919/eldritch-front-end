@@ -1,5 +1,27 @@
 import Phaser from "phaser";
-import { characters } from "../game/data/characterData";
+import backgroundImage from "../assets/background.png";
+import backgroundmp3 from "../assets/background.mp3";
+import createMuteToggle from "../game/ui/BackgroundMusicToggle";
+import mute from "../assets/mute.png";
+
+const characters = import.meta.glob("../assets/character[0-9]*.png", {
+  eager: true,
+});
+
+console.log(characters);
+
+const charArray = Object.keys(characters).map((path) =>
+  path.split("/").pop().replace(".png", ""),
+);
+
+console.log(charArray);
+
+const bioArray = [
+  "Name: Denis McCload\nAge:42\nRace: Human\nBackstory: I lost everything\nMy family, my home, my hope.\nI won't lose my will to fight",
+  "Name: Greystaff\nAge:72\nRace: Wizard\nBackstory: Feel my power\nI am the great wizzard\nI'm not delusional",
+  "Name: Patris Deathstare\nAge:32\nRace: Human\nBackstory: It is done.\nI crew up in the cult\nthat made this.\nNow I must end it all",
+  "Name: Unknown \nAge:Unknown\nRace: Dead\nBackstory: Kill\n....Kill\....Kill\nKILL THEM ALL!",
+];
 
 export default class characterSceneSolo extends Phaser.Scene {
   constructor() {
@@ -21,6 +43,8 @@ export default class characterSceneSolo extends Phaser.Scene {
     const scaleY = this.scale.height / bg.height;
     bg.setScale(Math.max(scaleX, scaleY));
 
+    createMuteToggle(this, "backgroundmp3");
+
     const title = this.add
       .text(this.scale.width / 2, 125, "Choose your Character", {
         fontSize: "72px",
@@ -33,14 +57,8 @@ export default class characterSceneSolo extends Phaser.Scene {
       .setOrigin(0.5);
 
     title.setShadow(4, 4, "#000000", 8, true, true);
-
-    let counter = 0;
-    let currentData = characters[counter];
-
-    let currentCharacter = this.loadCharacter(currentData.image_name);
-
-    const bioText = this.add
-      .text(1000, 450, `BIO:\n${currentData.bio}`, {
+    let bioText = this.add
+      .text(1000, 450, `BIO:\n${bioArray[0]}`, {
         fontSize: "24px",
         color: "#e8e8fc",
         align: "left",

@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import backgroundImg from "../assets/background.png";
 import { createEncounterUI } from "../game/ui/encounterUi";
-import { characters } from "../game/data/characterData";
-import { monsters } from "../game/data/monsterData";
+import backgroundmp3 from "../assets/background.mp3";
+import createMuteToggle from "../game/ui/BackgroundMusicToggle";
+import mute from "../assets/mute.png";
 
 export default class EncounterScene extends Phaser.Scene {
   constructor() {
@@ -28,11 +29,13 @@ export default class EncounterScene extends Phaser.Scene {
 
   preload() {
     this.load.image("bg", backgroundImg);
+    this.load.audio("backgroundmp3", backgroundmp3);
+    this.load.image("mute", mute);
   }
 
   create() {
     this.createBackground();
-    this.createCharacters();
+    createMuteToggle(this, "backgroundmp3");
 
     this.ui = createEncounterUI(this, {
       width: this.scale.width,
@@ -56,17 +59,5 @@ export default class EncounterScene extends Phaser.Scene {
     const scaleX = this.scale.width / bg.width;
     const scaleY = this.scale.height / bg.height;
     bg.setScale(Math.max(scaleX, scaleY));
-  }
-
-  createCharacters() {
-    this.add
-      .image(250, 430, this.player.image_name)
-      .setOrigin(0.5)
-      .setScale(0.4);
-
-    this.add
-      .image(980, 300, this.monster.image_name)
-      .setOrigin(0.5)
-      .setScale(0.4);
   }
 }

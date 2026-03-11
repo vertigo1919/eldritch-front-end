@@ -1,5 +1,13 @@
+import playerHealthBar from "../ui/HealthBar";
+import monsterHealthBar from "../ui/HealthBar";
+
 export function createEncounterUI(scene, opts = {}) {
-  const { width = scene.scale.width, height = scene.scale.height, onAnswer = () => {} } = opts;
+  const {
+    width = scene.scale.width,
+    height = scene.scale.height,
+    onAnswer = () => {},
+  } = opts;
+
   const ui = {};
 
   ui.playerHpText = scene.add.text(30, 20, "HP: --/--", {
@@ -7,10 +15,14 @@ export function createEncounterUI(scene, opts = {}) {
     color: "#ffffff",
   });
 
+  ui.playerHealthBar = playerHealthBar(scene, 120, 85, 1000, 100, true);
+
   ui.monsterHpText = scene.add.text(width - 240, 20, "MON: --/--", {
     fontSize: "24px",
     color: "#ffffff",
   });
+
+  ui.monsterHealthBar = monsterHealthBar(scene, 1160, 85, 1000, 100, false);
 
   ui.panel = scene.add
     .rectangle(width / 2, height - 90, width - 80, 190, 0x000000, 0.45)
@@ -74,11 +86,20 @@ export function createEncounterUI(scene, opts = {}) {
 
   ui.setHud = ({ player = {}, monster = {} } = {}) => {
     ui.playerHpText.setText(`HP: ${player.hp ?? "--"}/${player.maxHp ?? "--"}`);
-    ui.monsterHpText.setText(`MON: ${monster.hp ?? "--"}/${monster.maxHp ?? "--"}`);
+    ui.monsterHpText.setText(
+      `MON: ${monster.hp ?? "--"}/${monster.maxHp ?? "--"}`,
+    );
   };
 
   ui.showEndOverlay = (msg = "", onContinue) => {
-    const overlay = scene.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.65);
+    const overlay = scene.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x000000,
+      0.65,
+    );
 
     const text = scene.add
       .text(width / 2, height / 2, msg, {
