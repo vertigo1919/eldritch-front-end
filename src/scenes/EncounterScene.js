@@ -6,7 +6,7 @@ import mute from "../assets/mute.png";
 import { createEncounterUI } from "../game/ui/encounterUi";
 import createMuteToggle from "../game/ui/BackgroundMusicToggle";
 import { createGroupEncounterController } from "../game/controllers/groupEncounterController";
-import { createSoloEncounterController } from "../game/controllers/soloEncounterController";
+
 
 export default class EncounterScene extends Phaser.Scene {
   constructor() {
