@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import background from "../assets/background.png";
 import backgroundmp3 from "../assets/background.mp3";
 import createMuteToggle from "../game/ui/BackgroundMusicToggle";
+import { getSocket } from "../game/net/socketClient";
 import mute from "../assets/mute.png";
 
 // character images
@@ -53,6 +54,11 @@ export default class HomePage extends Phaser.Scene {
         color: "#FFFFFF",
       })
       .setOrigin(0.5);
+
+      const socket = getSocket();
+
+  socket.on("connect", () => {
+    console.log("connected:", socket.id)});
   }
 
   createBackground() {
