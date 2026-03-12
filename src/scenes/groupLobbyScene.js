@@ -96,7 +96,6 @@ export default class GroupLobbyScene extends Phaser.Scene {
 
       this.playersText.setText(playerLines.join("\n"));
       this.statusText.setText("Joined lobby");
-
       this.startButton.setVisible(true);
     };
 
@@ -104,23 +103,26 @@ export default class GroupLobbyScene extends Phaser.Scene {
       this.statusText.setText(payload.message || "Failed to join room");
     };
 
+    this.handleStartError = (payload) => {
+      this.statusText.setText(payload.message || "Could not start game");
+    };
+
+    this.handleRoundStarted = (payload) => {
+      const currentCharacter = characters[this.selectedIndex];
+
+      this.scene.start("EncounterScene", {
+        mode: "group",
+        roomCode: this.roomCode,
+        selectedIndex: this.selectedIndex,
+        roundStartedPayload: payload,
+        groupCharacter: currentCharacter,
+      });
+    };
+
     onLobbyUpdated(this.handleLobbyUpdated);
     onJoinError(this.handleJoinError);
-    this.handleStartError = (payload) => {
-  this.statusText.setText(payload.message || "Could not start game");
-};
-
-this.handleRoundStarted = (payload) => {
-  this.scene.start("EncounterScene", {
-    mode: "group",
-    roomCode: this.roomCode,
-    selectedIndex: this.selectedIndex,
-    roundStartedPayload: payload,
-  });
-};
-
-onStartError(this.handleStartError);
-onRoundStarted(this.handleRoundStarted);
+    onStartError(this.handleStartError);
+    onRoundStarted(this.handleRoundStarted);
   }
 
   createButtons() {
@@ -130,10 +132,6 @@ onRoundStarted(this.handleRoundStarted);
       backgroundColor: "#494949",
       padding: { left: 10, right: 10, top: 6, bottom: 6 },
     };
-
-    this.setNameButton = this.add
-      .text(120, 760 ? 0 : 0, "", buttonStyle); // placeholder to avoid repetition
-    this.setNameButton.destroy();
 
     this.setNameButton = this.add
       .text(120, 540, "Set Name", buttonStyle)
@@ -160,7 +158,7 @@ onRoundStarted(this.handleRoundStarted);
       .setInteractive({ useHandCursor: true })
       .setVisible(false);
 
-    this.setNameButton.on("pointerdown", async () => {
+    this.setNameButton.on("pointerdown", () => {
       const name = window.prompt("Enter your name:", this.playerName || "");
       if (!name) return;
 
@@ -184,17 +182,16 @@ onRoundStarted(this.handleRoundStarted);
       this.tryJoinOrCreateRoom("");
     });
 
-    this.joinRoomButton.on("pointerdown", async () => {
+    this.joinRoomButton.on("pointerdown", () => {
       const code = window.prompt("Enter room code:", this.roomCode || "");
       if (!code) return;
       this.tryJoinOrCreateRoom(code.trim().toUpperCase());
     });
 
-  
     this.startButton.on("pointerdown", () => {
-  startGame();
-  this.statusText.setText("Starting game...");
-});
+      startGame();
+      this.statusText.setText("Starting game...");
+    });
   }
 
   updateCharacterView() {
@@ -227,7 +224,11 @@ onRoundStarted(this.handleRoundStarted);
       return;
     }
 
-    const userId = crypto.randomUUID();
+    let userId = localStorage.getItem("eldritchUserId");
+    if (!userId) {
+      userId = crypto.randomUUID();
+      localStorage.setItem("eldritchUserId", userId);
+    }
 
     joinRoom({
       name: this.playerName,
@@ -239,16 +240,14 @@ onRoundStarted(this.handleRoundStarted);
     this.statusText.setText(roomCode ? "Joining room..." : "Creating room...");
   }
 
-  
+  shutdown() {
+    if (this.handleLobbyUpdated) offLobbyUpdated(this.handleLobbyUpdated);
+    if (this.handleJoinError) offJoinError(this.handleJoinError);
+    if (this.handleStartError) offStartError(this.handleStartError);
+    if (this.handleRoundStarted) offRoundStarted(this.handleRoundStarted);
+  }
 
-shutdown() {
-  if (this.handleLobbyUpdated) offLobbyUpdated(this.handleLobbyUpdated);
-  if (this.handleJoinError) offJoinError(this.handleJoinError);
-  if (this.handleStartError) offStartError(this.handleStartError);
-  if (this.handleRoundStarted) offRoundStarted(this.handleRoundStarted);
-}
-
-destroy() {
-  this.shutdown();
-}
+  destroy() {
+    this.shutdown();
+  }
 }

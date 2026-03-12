@@ -6,6 +6,7 @@ import EncounterScene from "../scenes/EncounterScene";
 import VictoryPage from "../scenes/Victory";
 import GameOver from "../scenes/Gameover";
 import GroupLobbyScene from "../scenes/groupLobbyScene";
+import SoloSocketBootstrapScene from "../scenes/soloSocketBootstrapScene";
 
 export function createPhaserGame(parentId) {
   return new Phaser.Game({
@@ -17,6 +18,7 @@ export function createPhaserGame(parentId) {
     scene: [
       HomePage,
       characterSceneSolo,
+      SoloSocketBootstrapScene,
       GroupLobbyScene,
       EncounterScene,
       VictoryPage,

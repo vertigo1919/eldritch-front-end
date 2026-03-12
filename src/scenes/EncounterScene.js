@@ -1,12 +1,12 @@
 import Phaser from "phaser";
 import backgroundImg from "../assets/background.png";
-import { createEncounterUI } from "../game/ui/encounterUi";
-import { characters } from "../game/data/characterData";
-import { monsters } from "../game/data/monsterData";
-import { questions } from "../game/data/questionData";
 import backgroundmp3 from "../assets/background.mp3";
-import createMuteToggle from "../game/ui/BackgroundMusicToggle";
 import mute from "../assets/mute.png";
+
+import { createEncounterUI } from "../game/ui/encounterUi";
+import createMuteToggle from "../game/ui/BackgroundMusicToggle";
+import { createGroupEncounterController } from "../game/controllers/groupEncounterController";
+import { createSoloEncounterController } from "../game/controllers/soloEncounterController";
 
 export default class EncounterScene extends Phaser.Scene {
   constructor() {
@@ -14,26 +14,9 @@ export default class EncounterScene extends Phaser.Scene {
   }
 
   init(data) {
-  this.selectedIndex = data?.selectedIndex ?? 0;
-  this.difficulty = data?.difficulty ?? "easy";
-
-  this.player = characters[this.selectedIndex];
-  this.monster = monsters[0];
-
-  this.playerStats = {
-    hp: this.player.base_sanity,
-    maxHp: this.player.base_sanity,
-  };
-
-  this.monsterStats = {
-    hp: this.monster.max_hp,
-    maxHp: this.monster.max_hp,
-  };
-
-  this.questionPool = questions.filter(
-    (question) => question.difficulty === this.difficulty
-  );
-}
+    this.sceneData = data ?? {};
+    this.mode = this.sceneData.mode ?? "solo";
+  }
 
   preload() {
     this.load.image("bg", backgroundImg);
@@ -42,66 +25,38 @@ export default class EncounterScene extends Phaser.Scene {
   }
 
   create() {
-  this.createBackground();
-  this.createCharacters();
+    this.createBackground();
+    createMuteToggle(this, "backgroundmp3");
 
-  this.ui = createEncounterUI(this, {
-    width: this.scale.width,
-    height: this.scale.height,
-    onAnswer: (i) => {
-      console.log("clicked answer", i);
-      console.log("correct answer index", this.currentQuestion.correctIndex);
-    },
-  });
+    this.ui = createEncounterUI(this, {
+      width: this.scale.width,
+      height: this.scale.height,
+      onAnswer: (i) => {
+        this.controller?.handleAnswer(i);
+      },
+    });
 
-  this.ui.setHud({
-    player: this.playerStats,
-    monster: this.monsterStats,
-  });
+    if (this.mode === "group") {
+      this.controller = createGroupEncounterController(this, this.ui, this.sceneData);
+    } else {
+      this.controller = createSoloEncounterController(this, this.ui, this.sceneData);
+    }
 
-  this.showQuestion();
-  this.ui.setTimer("");
-}
+    this.controller.start();
+  }
 
-createBackground() {
+  createBackground() {
     const bg = this.add.image(0, 0, "bg").setOrigin(0);
     const scaleX = this.scale.width / bg.width;
     const scaleY = this.scale.height / bg.height;
     bg.setScale(Math.max(scaleX, scaleY));
   }
 
-  formatQuestion(question) {
-  return {
-    question_id: question.question_id,
-    prompt: question.prompt,
-    options: [
-      question.option_a,
-      question.option_b,
-      question.option_c,
-      question.option_d,
-    ],
-    correctIndex: ["a", "b", "c", "d"].indexOf(question.correct_option),
-  };
-}
+  shutdown() {
+    this.controller?.shutdown?.();
+  }
 
-showQuestion() {
-  if (!this.questionPool.length) return;
-
-  const firstQuestion = this.questionPool[0];
-  this.currentQuestion = this.formatQuestion(firstQuestion);
-
-  this.ui.setQuestion(this.currentQuestion);
-}
-
-  createCharacters() {
-    this.add
-      .image(250, 380, this.player.image_name)
-      .setOrigin(0.5)
-      .setScale(0.3);
-
-    this.add
-      .image(980, 380, this.monster.image_name)
-      .setOrigin(0.5)
-      .setScale(0.5);
+  destroy() {
+    this.shutdown();
   }
 }
