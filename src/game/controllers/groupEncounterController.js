@@ -8,7 +8,7 @@ import {
   offRoundStarted,
 } from "../net/groupApi";
 
-import { characters } from "../data/characterData";
+import { createPlayerSprites } from "../ui/characterLoadingUI";
 import { playMonsterHitFx } from "../monsterfx";
 
 export function createGroupEncounterController(scene, ui, sceneData) {
@@ -37,7 +37,7 @@ export function createGroupEncounterController(scene, ui, sceneData) {
       return;
     }
 
-    createPlayerSprites();
+    state.playerSprites = createPlayerSprites(scene, state.groupPlayers);
     applyRoundStartedPayload(state.roundStartedPayload);
     registerListeners();
   }
@@ -55,81 +55,18 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     console.log("submitted group answer:", answer);
   }
 
-  //state.playerSprites = createPlayerSprites(scene, state.groupPlayers);
-  function createPlayerSprites() {
-    state.playerSprites.forEach((sprite) => {
-      scene.tweens.killTweensOf(sprite);
-      sprite.destroy();
-    });
-    state.playerSprites = [];
-
-    if (!state.groupPlayers.length) {
-      console.warn("No group players provided to EncounterScene");
-      return;
-    }
-
-    const positionsByCount = {
-      1: [{ x: 250, y: 380 }],
-      2: [
-        { x: 220, y: 330 },
-        { x: 300, y: 430 },
-      ],
-      3: [
-        { x: 210, y: 300 },
-        { x: 280, y: 380 },
-        { x: 350, y: 460 },
-      ],
-      4: [
-        { x: 190, y: 280 },
-        { x: 250, y: 360 },
-        { x: 320, y: 430 },
-        { x: 390, y: 500 },
-      ],
-    };
-
-    const party = state.groupPlayers.slice(0, 4);
-    const positions = positionsByCount[party.length] ?? positionsByCount[1];
-
-    party.forEach((player, index) => {
-      const mappedCharacter =
-        characters.find(
-          (c) =>
-            (c.character_id ?? c.id) ===
-            (player.character?.character_id ?? player.character?.id)
-        ) ?? player.character;
-
-      const imageName = mappedCharacter?.image_name;
-
-      console.log("rendering player:", player.name, mappedCharacter);
-
-      if (!imageName) {
-        console.warn("Player missing image_name:", player);
-        return;
-      }
-
-      if (!scene.textures.exists(imageName)) {
-        console.warn("Missing player texture:", imageName);
-        return;
-      }
-
-      const { x, y } = positions[index];
-
-      const sprite = scene.add
-        .image(x, y, imageName)
-        .setOrigin(0.5)
-        .setScale(0.3);
-
-      state.playerSprites.push(sprite);
-    });
-  }
-
   function applyRoundStartedPayload(payload) {
     const { monster, question, gameState } = payload;
+
+    if (!monster || !question || !gameState) {
+      console.error("Invalid roundStartedPayload:", payload);
+      return;
+    }
 
     state.currentQuestionId = question.id;
     state.roundDeadline = gameState.roundDeadline;
     state.teamHp = gameState.teamHp;
-    state.teamHpMax ??= gameState.teamHp;
+    state.teamHpMax ??= gameState.maxTeamHp ?? gameState.teamHp;
     state.monsterMaxHp = monster.maxHp;
     state.currentMonsterHp = monster.hp;
 
@@ -315,6 +252,8 @@ export function createGroupEncounterController(scene, ui, sceneData) {
 
     if (state.groupMonsterSprite) {
       scene.tweens.killTweensOf(state.groupMonsterSprite);
+      state.groupMonsterSprite.destroy();
+      state.groupMonsterSprite = null;
     }
 
     state.playerSprites.forEach((sprite) => {
