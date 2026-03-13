@@ -15,5 +15,10 @@ export default function battleController(scene, playerHB, monsterHB) {
     monsterHB.healthBar.width,
   );
 
+  controller.resetMonsterHp = () => {
+    scene.tweens.killTweensOf(monsterHB.healthBar);
+    monsterHB.healthBar.width = 250;
+  };
+
   return controller;
 }
