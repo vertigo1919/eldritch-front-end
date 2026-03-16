@@ -7,6 +7,7 @@ import VictoryPage from "../scenes/Victory";
 import GameOver from "../scenes/Gameover";
 import GroupLobbyScene from "../scenes/groupLobbyScene";
 import SoloSocketBootstrapScene from "../scenes/soloSocketBootstrapScene";
+import IntroScene from "../scenes/intro";
 
 export function createPhaserGame(parentId) {
   return new Phaser.Game({
@@ -16,6 +17,7 @@ export function createPhaserGame(parentId) {
     height: 720,
     backgroundColor: "#0b0b10",
     scene: [
+      IntroScene,
       HomePage,
       characterSceneSolo,
       SoloSocketBootstrapScene,
@@ -24,7 +26,6 @@ export function createPhaserGame(parentId) {
       VictoryPage,
       GameOver,
       ComingSoon,
-      
     ],
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     dom: {
