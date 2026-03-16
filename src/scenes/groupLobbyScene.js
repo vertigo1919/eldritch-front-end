@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { characters } from "../game/data/characterData";
-import {
+import * as groupApi from "../game/net/groupApi";
+
+const {
   joinRoom,
   startGame,
   onLobbyUpdated,
@@ -11,7 +13,7 @@ import {
   offJoinError,
   offStartError,
   offRoundStarted,
-} from "../game/net/groupApi";
+} = groupApi;
 
 export default class GroupLobbyScene extends Phaser.Scene {
   constructor() {
@@ -22,9 +24,10 @@ export default class GroupLobbyScene extends Phaser.Scene {
     this.playerName = data?.playerName ?? "";
     this.roomCode = data?.roomCode ?? "";
     this.selectedIndex = data?.selectedIndex ?? 0;
+    this.lobbyState = data?.lobbyState ?? null;
 
-    this.lobbyState = null;
     this.currentCharacterImage = null;
+    this.characterConfirmed = false;
   }
 
   create() {
@@ -98,19 +101,29 @@ export default class GroupLobbyScene extends Phaser.Scene {
     this.createButtons();
     this.updateCharacterView();
 
+    if (this.playerName) {
+      this.characterConfirmed = true;
+    }
+
+    this.applyCharacterLockState();
+
+    if (this.lobbyState) {
+      this.renderLobbyState(this.lobbyState);
+      this.statusText.setText("Rejoined existing lobby");
+    } else if (this.roomCode) {
+      this.statusText.setText(`Room remembered: ${this.roomCode}`);
+    }
+
     this.handleLobbyUpdated = (payload) => {
       this.lobbyState = payload;
       this.roomCode = payload.roomCode;
-      this.roomCodeText.setText(`Room Code: ${this.roomCode}`);
-
-      const playerLines = payload.players.map((player, index) => {
-        const hostLabel = player.userId === payload.hostUserId ? " (Host)" : "";
-        return `${index + 1}. ${player.name}${hostLabel} - ${player.character.name}`;
-      });
-
-      this.playersText.setText(playerLines.join("\n"));
+      this.renderLobbyState(payload);
       this.statusText.setText("Joined lobby");
-      this.startButton.setVisible(true);
+
+      if (this.playerName) {
+        this.characterConfirmed = true;
+        this.applyCharacterLockState();
+      }
     };
 
     this.handleJoinError = (payload) => {
@@ -122,45 +135,29 @@ export default class GroupLobbyScene extends Phaser.Scene {
     };
 
     this.handleRoundStarted = (payload) => {
-  const groupPlayers = (this.lobbyState?.players ?? []).map((player) => ({
-    userId: player.userId,
-    name: player.name,
-    character: player.character,
-  }));
+      const groupPlayers = (this.lobbyState?.players ?? []).map((player) => {
+        const frontendCharacter =
+          characters.find(
+            (c) =>
+              (c.character_id ?? c.id) ===
+              (player.character?.character_id ?? player.character?.id)
+          ) ?? player.character;
 
-  this.scene.start("EncounterScene", {
-    mode: "group",
-    roomCode: this.roomCode,
-    selectedIndex: this.selectedIndex,
-    roundStartedPayload: payload,
-    groupPlayers,
-  });
-};
+        return {
+          userId: player.userId,
+          name: player.name,
+          character: frontendCharacter,
+        };
+      });
 
-this.handleRoundStarted = (payload) => {
-  const groupPlayers = (this.lobbyState?.players ?? []).map((player) => {
-    const frontendCharacter =
-      characters.find((c) =>
-        (c.character_id ?? c.id) === (player.character?.character_id ?? player.character?.id)
-      ) ?? player.character;
-
-    return {
-      userId: player.userId,
-      name: player.name,
-      character: frontendCharacter,
+      this.scene.start("EncounterScene", {
+        mode: "group",
+        roomCode: this.roomCode,
+        selectedIndex: this.selectedIndex,
+        roundStartedPayload: payload,
+        groupPlayers,
+      });
     };
-  });
-
-  console.log("groupPlayers passed to EncounterScene:", groupPlayers);
-
-  this.scene.start("EncounterScene", {
-    mode: "group",
-    roomCode: this.roomCode,
-    selectedIndex: this.selectedIndex,
-    roundStartedPayload: payload,
-    groupPlayers,
-  });
-};
 
     this.events.once("shutdown", () => {
       this.shutdown();
@@ -181,7 +178,7 @@ this.handleRoundStarted = (payload) => {
     };
 
     this.setNameButton = this.add
-      .text(120, 540, "Set Name", buttonStyle)
+      .text(120, 540, "Select Character", buttonStyle)
       .setInteractive({ useHandCursor: true });
 
     this.prevCharacterButton = this.add
@@ -200,8 +197,12 @@ this.handleRoundStarted = (payload) => {
       .text(360, 650, "Join Room", buttonStyle)
       .setInteractive({ useHandCursor: true });
 
+    this.leaveRoomButton = this.add
+      .text(560, 650, "Leave Room", buttonStyle)
+      .setInteractive({ useHandCursor: true });
+
     this.startButton = this.add
-      .text(560, 650, "Start Game", buttonStyle)
+      .text(760, 650, "Start Game", buttonStyle)
       .setInteractive({ useHandCursor: true })
       .setVisible(false);
 
@@ -210,12 +211,14 @@ this.handleRoundStarted = (payload) => {
     });
 
     this.prevCharacterButton.on("pointerdown", () => {
+      if (this.characterConfirmed) return;
       if (this.selectedIndex <= 0) return;
       this.selectedIndex -= 1;
       this.updateCharacterView();
     });
 
     this.nextCharacterButton.on("pointerdown", () => {
+      if (this.characterConfirmed) return;
       if (this.selectedIndex >= characters.length - 1) return;
       this.selectedIndex += 1;
       this.updateCharacterView();
@@ -229,10 +232,96 @@ this.handleRoundStarted = (payload) => {
       this.openRoomCodePrompt();
     });
 
+    this.leaveRoomButton.on("pointerdown", () => {
+      this.leaveRoom();
+    });
+
     this.startButton.on("pointerdown", () => {
       startGame();
       this.statusText.setText("Starting game...");
     });
+  }
+
+  applyCharacterLockState() {
+    const shouldHideCharacterControls =
+      this.characterConfirmed || !!this.roomCode || !!this.lobbyState;
+
+    this.setNameButton.setVisible(!shouldHideCharacterControls);
+    if (shouldHideCharacterControls) {
+      this.setNameButton.disableInteractive();
+    } else {
+      this.setNameButton.setInteractive({ useHandCursor: true });
+    }
+
+    this.prevCharacterButton.setVisible(!shouldHideCharacterControls);
+    this.nextCharacterButton.setVisible(!shouldHideCharacterControls);
+
+    if (shouldHideCharacterControls) {
+      this.prevCharacterButton.disableInteractive();
+      this.nextCharacterButton.disableInteractive();
+    } else {
+      this.prevCharacterButton.setInteractive({ useHandCursor: true });
+      this.nextCharacterButton.setInteractive({ useHandCursor: true });
+    }
+  }
+
+  renderLobbyState(payload) {
+    this.roomCode = payload.roomCode;
+    this.roomCodeText.setText(`Room Code: ${this.roomCode}`);
+
+    const playerLines = payload.players.map((player, index) => {
+      const hostLabel = player.userId === payload.hostUserId ? " (Host)" : "";
+      return `${index + 1}. ${player.name}${hostLabel} - ${player.character.name}`;
+    });
+
+    this.playersText.setText(playerLines.join("\n"));
+    this.startButton.setVisible(true);
+
+    const currentUserId = localStorage.getItem("eldritchUserId");
+    const me = payload.players.find((player) => player.userId === currentUserId);
+
+    if (me) {
+      this.playerName = me.name;
+      this.nameText.setText(`Name: ${this.playerName}`);
+
+      const matchedIndex = characters.findIndex(
+        (c) =>
+          (c.character_id ?? c.id) ===
+          (me.character?.character_id ?? me.character?.id)
+      );
+
+      if (matchedIndex !== -1) {
+        this.selectedIndex = matchedIndex;
+        this.updateCharacterView();
+      }
+
+      this.characterConfirmed = true;
+      this.applyCharacterLockState();
+    }
+  }
+
+  leaveRoom() {
+    const userId = localStorage.getItem("eldritchUserId");
+
+    if (typeof groupApi.leaveRoom === "function") {
+      groupApi.leaveRoom({
+        roomCode: this.roomCode,
+        userId,
+      });
+    }
+
+    this.lobbyState = null;
+    this.roomCode = "";
+    this.playerName = "";
+    this.characterConfirmed = false;
+
+    this.nameText.setText("Name: Not set");
+    this.roomCodeText.setText("Room Code: None");
+    this.playersText.setText("No room joined yet");
+    this.statusText.setText("Left room");
+    this.startButton.setVisible(false);
+
+    this.applyCharacterLockState();
   }
 
   updatePlayerName(name) {
@@ -254,6 +343,8 @@ this.handleRoundStarted = (payload) => {
       forceUppercase: false,
       onSave: (value) => {
         this.updatePlayerName(value);
+        this.characterConfirmed = true;
+        this.applyCharacterLockState();
       },
     });
   }
