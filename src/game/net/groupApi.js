@@ -67,3 +67,6 @@ export function offRoundResult(handler) {
 export function offGameEnded(handler) {
   getSocket().off("gameEnded", handler);
 }
+export function leaveRoom(payload) {
+  getSocket().emit("leaveRoom", payload);
+}
