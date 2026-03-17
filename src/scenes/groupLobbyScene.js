@@ -82,7 +82,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.statusText = this.add
-      .text(this.scale.width / 2, 680, "", {
+      .text(this.scale.width / 2, 150, "", {
         fontSize: "24px",
         color: "#ffb3b3",
       })
@@ -178,7 +178,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
     };
 
     this.setNameButton = this.add
-      .text(120, 540, "Select Character", buttonStyle)
+      .text(500, 540, "Select Character", buttonStyle)
       .setInteractive({ useHandCursor: true });
 
     this.prevCharacterButton = this.add
@@ -202,9 +202,15 @@ export default class GroupLobbyScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.startButton = this.add
-      .text(760, 650, "Start Game", buttonStyle)
+      .text(this.scale.width / 500, 540, "Start Game", buttonStyle)
       .setInteractive({ useHandCursor: true })
       .setVisible(false);
+
+    this.backButton = this.add
+    .text(900, 650, "Back to title Screen", buttonStyle)
+    .setInteractive({useHandCursor: true} )
+    .setVisible(true);
+   
 
     this.setNameButton.on("pointerdown", () => {
       this.openNamePrompt();
@@ -240,6 +246,11 @@ export default class GroupLobbyScene extends Phaser.Scene {
       startGame();
       this.statusText.setText("Starting game...");
     });
+
+    this.backButton.on("pointerdown", () =>
+    {
+      this.scene.start("HomePage");
+    })
   }
 
   applyCharacterLockState() {
@@ -527,7 +538,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
 
   tryJoinOrCreateRoom(roomCode) {
     if (!this.playerName) {
-      this.statusText.setText("Set your name first");
+      this.statusText.setText("Select Character first");
       return;
     }
 
