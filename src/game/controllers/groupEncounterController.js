@@ -13,7 +13,15 @@ import {
 } from "../net/groupApi";
 
 import { createPlayerSprites } from "../ui/characterLoadingUI";
-import { playMonsterHitFx } from "../monsterfx";
+import {
+  playMonsterHitFx,
+  playMonsterIdleFx,
+  stopMonsterIdleFx,
+} from "../monsterfx";
+import {
+  playPlayerIdleFx,
+  stopPlayerIdleFx,
+} from "../playerFx";
 
 export function createGroupEncounterController(scene, ui, sceneData) {
   const state = {
@@ -35,6 +43,8 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     pendingFxCount: 0,
     readyDelayDone: false,
     readyDelayEvent: null,
+    monsterIdleTween: null,
+    playerIdleTweens: [],
   };
 
   function start() {
@@ -47,6 +57,8 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     }
 
     state.playerSprites = createPlayerSprites(scene, state.groupPlayers);
+    state.playerIdleTweens = playPlayerIdleFx(scene, state.playerSprites);
+
     applyRoundStartedPayload(state.roundStartedPayload);
     registerListeners();
     state.battle = battleController(
@@ -100,6 +112,9 @@ export function createGroupEncounterController(scene, ui, sceneData) {
       state.groupMonsterSprite.setPosition(980, 340);
       state.groupMonsterSprite.setScale(0.5);
     }
+
+    stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+    state.monsterIdleTween = playMonsterIdleFx(scene, state.groupMonsterSprite);
 
     ui.setHud({
       player: {
@@ -179,6 +194,9 @@ export function createGroupEncounterController(scene, ui, sceneData) {
       state.groupMonsterSprite.setPosition(980, 340);
       state.groupMonsterSprite.setScale(0.5);
     }
+
+    stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+    state.monsterIdleTween = playMonsterIdleFx(scene, state.groupMonsterSprite);
   }
 
   function maybeFinishRoundFlow() {
@@ -277,7 +295,10 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     if (monsterTookDamage) {
       state.pendingFxCount += 1;
 
+      stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+
       playMonsterHitFx(scene, state.groupMonsterSprite, monsterDamage, () => {
+        state.monsterIdleTween = playMonsterIdleFx(scene, state.groupMonsterSprite);
         state.pendingFxCount -= 1;
         maybeFinishRoundFlow();
       });
@@ -286,12 +307,15 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     if (playerTookDamage) {
       state.pendingFxCount += 1;
 
+      stopPlayerIdleFx(scene, state.playerSprites, state.playerIdleTweens);
+
       playerFx(
         scene,
         state.playerSprites,
         state.groupMonsterSprite,
         playerDamage,
         () => {
+          state.playerIdleTweens = playPlayerIdleFx(scene, state.playerSprites);
           state.pendingFxCount -= 1;
           maybeFinishRoundFlow();
         },
@@ -348,6 +372,11 @@ export function createGroupEncounterController(scene, ui, sceneData) {
       state.readyDelayEvent.remove(false);
       state.readyDelayEvent = null;
     }
+
+    stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+    stopPlayerIdleFx(scene, state.playerSprites, state.playerIdleTweens);
+    state.monsterIdleTween = null;
+    state.playerIdleTweens = [];
 
     if (state.groupMonsterSprite) {
       scene.tweens.killTweensOf(state.groupMonsterSprite);

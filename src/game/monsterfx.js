@@ -49,3 +49,37 @@ export function playMonsterHitFx(
 		},
 	});
 }
+
+export function playMonsterIdleFx(scene, monsterSprite) {
+  if (!monsterSprite) return null;
+
+  scene.tweens.killTweensOf(monsterSprite);
+
+  monsterSprite.setScale(0.5);
+  monsterSprite.setAngle(0);
+
+  const idleTween = scene.tweens.add({
+    targets: monsterSprite,
+    y: monsterSprite.y - 10,
+    scaleX: 0.515,
+    scaleY: 0.515,
+    duration: 1200,
+    ease: "Sine.easeInOut",
+    yoyo: true,
+    repeat: -1,
+  });
+
+  return idleTween;
+}
+
+export function stopMonsterIdleFx(scene, monsterSprite, idleTween) {
+  if (idleTween) {
+    idleTween.stop();
+  }
+
+  if (!monsterSprite) return;
+
+  scene.tweens.killTweensOf(monsterSprite);
+  monsterSprite.setScale(0.5);
+  monsterSprite.setAngle(0);
+}

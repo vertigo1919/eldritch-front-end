@@ -50,3 +50,36 @@ export function playerFx(
     },
   });
 }
+
+export function playPlayerIdleFx(scene, playerSprites = []) {
+  return playerSprites.map((sprite, index) => {
+    if (!sprite) return null;
+
+    scene.tweens.killTweensOf(sprite);
+
+    const baseY = sprite.y;
+    const floatOffset = 6 + index * 2;
+    const delay = index * 120;
+
+    return scene.tweens.add({
+      targets: sprite,
+      y: baseY - floatOffset,
+      duration: 1000,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+      delay,
+    });
+  });
+}
+
+export function stopPlayerIdleFx(scene, playerSprites = [], idleTweens = []) {
+  idleTweens.forEach((tween) => {
+    if (tween) tween.stop();
+  });
+
+  playerSprites.forEach((sprite) => {
+    if (!sprite) return;
+    scene.tweens.killTweensOf(sprite);
+  });
+}
