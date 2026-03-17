@@ -1,8 +1,6 @@
 import Phaser from "phaser";
 import { characters } from "../game/data/characterData";
 import * as groupApi from "../game/net/groupApi";
-import createMuteToggle from "../game/ui/BackgroundMusicToggle";
-import mute from '../assets/mute.png';
 
 const {
   joinRoom,
@@ -33,17 +31,11 @@ export default class GroupLobbyScene extends Phaser.Scene {
     this.characterConfirmed = false;
   }
 
-  preload() {
-    this.load.image('mute', mute);
-  }
-
   create() {
     const bg = this.add.image(0, 0, "background").setOrigin(0);
     const scaleX = this.scale.width / bg.width;
     const scaleY = this.scale.height / bg.height;
     bg.setScale(Math.max(scaleX, scaleY));
-
-    createMuteToggle(this, 'backgroundmp3');
 
     this.add
       .text(this.scale.width / 2, 80, "Group Lobby", {
@@ -63,7 +55,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
       {
         fontSize: "28px",
         color: "#ffffff",
-      },
+      }
     );
 
     this.roomCodeText = this.add.text(
@@ -73,7 +65,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
       {
         fontSize: "28px",
         color: "#ffffff",
-      },
+      }
     );
 
     this.characterNameText = this.add.text(120, 250, "", {
@@ -146,7 +138,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
           characters.find(
             (c) =>
               (c.character_id ?? c.id) ===
-              (player.character?.character_id ?? player.character?.id),
+              (player.character?.character_id ?? player.character?.id)
           ) ?? player.character;
 
         return {
@@ -246,7 +238,6 @@ export default class GroupLobbyScene extends Phaser.Scene {
 
     this.startButton.on("pointerdown", () => {
       startGame();
-      this.sound.stopAll();
       this.statusText.setText("Starting game...");
     });
   }
@@ -283,9 +274,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
     this.startButton.setVisible(true);
 
     const currentUserId = localStorage.getItem("eldritchUserId");
-    const me = payload.players.find(
-      (player) => player.userId === currentUserId,
-    );
+    const me = payload.players.find((player) => player.userId === currentUserId);
 
     if (me) {
       this.playerName = me.name;
@@ -294,7 +283,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
       const matchedIndex = characters.findIndex(
         (c) =>
           (c.character_id ?? c.id) ===
-          (me.character?.character_id ?? me.character?.id),
+          (me.character?.character_id ?? me.character?.id)
       );
 
       if (matchedIndex !== -1) {
