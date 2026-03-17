@@ -64,8 +64,7 @@ export function offRoundResult(handler) {
   getSocket().off("roundResult", handler);
 }
 
-export function requestCurrentLobby(handler)
-{
+export function requestCurrentLobby(handler) {
   getSocket().off("requestCurrentLobby", handler);
 }
 
