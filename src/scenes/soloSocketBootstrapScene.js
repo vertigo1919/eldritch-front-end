@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { characters } from "../game/data/characterData";
-import {
+import * as groupApi from "../game/net/groupApi";
+
+const {
   joinRoom,
   startGame,
   requestLobby,
@@ -12,7 +14,7 @@ import {
   offJoinError,
   offStartError,
   offRoundStarted,
-} from "../game/net/groupApi";
+} = groupApi;
 
 export default class SoloSocketBootstrapScene extends Phaser.Scene {
   constructor() {
@@ -25,6 +27,7 @@ export default class SoloSocketBootstrapScene extends Phaser.Scene {
     this.hasStartedGame = false;
     this.hasResolvedLobbyCheck = false;
     this.fallbackCreateEvent = null;
+    this.isRecreatingRoom = false;
   }
 
   create() {
@@ -79,7 +82,20 @@ export default class SoloSocketBootstrapScene extends Phaser.Scene {
         this.selectedIndex = matchedIndex;
       }
 
-      this.statusText.setText(`Room ready: ${this.roomCode}. Starting game...`);
+      if (!this.isRecreatingRoom) {
+        this.isRecreatingRoom = true;
+        this.statusText.setText(`Leaving old room ${this.roomCode}...`);
+
+        groupApi.leaveRoom();
+
+        this.time.delayedCall(150, () => {
+          this.statusText.setText("Creating fresh private room...");
+          this.createSoloSocketRoom();
+        });
+        return;
+      }
+
+      this.statusText.setText(`Room created: ${this.roomCode}. Starting game...`);
 
       if (!this.hasStartedGame && payload.roomStatus === "lobby") {
         this.hasStartedGame = true;
@@ -144,6 +160,7 @@ export default class SoloSocketBootstrapScene extends Phaser.Scene {
       if (this.hasResolvedLobbyCheck) return;
 
       this.statusText.setText("Creating private room...");
+      this.isRecreatingRoom = true;
       this.createSoloSocketRoom();
     });
   }
