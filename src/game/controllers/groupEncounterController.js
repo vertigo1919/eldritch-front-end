@@ -1,6 +1,6 @@
-import battleController from "../battleController";
-import applyDamage from "../battleLogic";
-import { playerFx } from "../playerFx";
+import battleController from '../battleController';
+import applyDamage from '../battleLogic';
+import { playerFx } from '../playerFx';
 import {
   submitAnswer,
   clientReady,

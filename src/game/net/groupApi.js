@@ -80,5 +80,5 @@ export function requestLobby() {
 }
 
 export function clientReady() {
-  getSocket().emit("clientReadyForNextRound");
+	getSocket().emit('clientReadyForNextRound');
 }
