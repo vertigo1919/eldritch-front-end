@@ -316,10 +316,10 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     let message = "Game Over";
 
     if (payload.result === "victory" && !payload.isNextStage) {
-      this.sound.stopAll();
+      scene.sound.stopAll();
       scene.scene.start("Victory");
     } else if (payload.result === "defeat") {
-      this.sound.stopAll();
+      scene.sound.stopAll();
       scene.scene.start("GameOver");
     } else if (payload.result === "abandoned") message = "Abandoned";
 

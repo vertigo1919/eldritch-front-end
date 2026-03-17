@@ -64,8 +64,7 @@ export function offRoundResult(handler) {
   getSocket().off("roundResult", handler);
 }
 
-export function requestCurrentLobby(handler)
-{
+export function requestCurrentLobby(handler) {
   getSocket().off("requestCurrentLobby", handler);
 }
 
@@ -78,4 +77,8 @@ export function leaveRoom() {
 
 export function requestLobby() {
   getSocket().emit("requestLobby");
+}
+
+export function clientReady() {
+  getSocket().emit("clientReadyForNextRound");
 }
