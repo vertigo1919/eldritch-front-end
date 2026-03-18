@@ -1,607 +1,486 @@
-import Phaser from "phaser";
-import { characters } from "../game/data/characterData";
-import * as groupApi from "../game/net/groupApi";
-import createMuteToggle from "../game/ui/BackgroundMusicToggle";
-
-const {
-  joinRoom,
-  startGame,
-  requestLobby,
-  onLobbyUpdated,
-  onJoinError,
-  onStartError,
+import battleController from "../battleController";
+import applyDamage from "../battleLogic";
+import { playerFx } from "../playerFx";
+import {
+  submitAnswer,
+  clientReady,
+  onRoundResult,
+  offRoundResult,
+  onGameEnded,
+  offGameEnded,
   onRoundStarted,
-  offLobbyUpdated,
-  offJoinError,
-  offStartError,
   offRoundStarted,
-} = groupApi;
+} from "../net/groupApi";
 
-export default class GroupLobbyScene extends Phaser.Scene {
-  constructor() {
-    super("GroupLobbyScene");
+import { createPlayerSprites } from "../ui/characterLoadingUI";
+import {
+  playMonsterHitFx,
+  playMonsterIdleFx,
+  stopMonsterIdleFx,
+} from "../monsterfx";
+import { playPlayerIdleFx, stopPlayerIdleFx } from "../playerFx";
+
+export function createGroupEncounterController(scene, ui, sceneData) {
+  const state = {
+    roomCode: sceneData.roomCode ?? null,
+    roundStartedPayload: sceneData.roundStartedPayload ?? null,
+    countdownEvent: null,
+    groupMonsterSprite: null,
+    playerSprites: [],
+    groupPlayers: sceneData.groupPlayers ?? [],
+    currentQuestionId: null,
+    roundDeadline: null,
+    teamHp: null,
+    teamHpMax: null,
+    monsterMaxHp: null,
+    currentMonsterHp: null,
+    isPlayingHitFx: false,
+    battle: null,
+    pendingRoundStartedPayload: null,
+    pendingFxCount: 0,
+    readyDelayDone: false,
+    readyDelayEvent: null,
+    monsterIdleTween: null,
+    playerIdleTweens: [],
+    pendingStageTransition: null,
+    levelOverlay: null,
+  };
+
+  function start() {
+    if (!state.roundStartedPayload) {
+      console.error("Missing roundStartedPayload for group mode");
+      ui.setHud({});
+      ui.setQuestion({});
+      ui.setTimer("");
+      return;
+    }
+
+    state.playerSprites = createPlayerSprites(scene, state.groupPlayers);
+    state.playerIdleTweens = playPlayerIdleFx(scene, state.playerSprites);
+
+    applyRoundStartedPayload(state.roundStartedPayload);
+    registerListeners();
+    state.battle = battleController(
+      scene,
+      ui.playerHealthBar,
+      ui.monsterHealthBar
+    );
   }
 
-  init(data) {
-    this.playerName = data?.playerName ?? "";
-    this.roomCode = data?.roomCode ?? "";
-    this.selectedIndex = data?.selectedIndex ?? 0;
-    this.lobbyState = data?.lobbyState ?? null;
+  function handleAnswer(index) {
+    const answerMap = ["a", "b", "c", "d"];
+    const answer = answerMap[index];
 
-    this.currentCharacterImage = null;
-    this.characterConfirmed = false;
+    submitAnswer({
+      questionId: state.currentQuestionId,
+      answer,
+    });
+
+    ui.lockAnswers();
+    console.log("submitted group answer:", answer);
   }
 
-  create() {
-    const bg = this.add.image(0, 0, "background").setOrigin(0);
-    const scaleX = this.scale.width / bg.width;
-    const scaleY = this.scale.height / bg.height;
-    bg.setScale(Math.max(scaleX, scaleY));
-    createMuteToggle(this, "backgroundmp3");
+  function getDifficultyLabel(stageNumber) {
+    if (stageNumber === 1) return "Level 1 - Easy";
+    if (stageNumber === 2) return "Level 2 - Medium";
+    if (stageNumber === 3) return "Level 3 - Hard";
+    return `Level ${stageNumber}`;
+  }
 
-    this.add
-      .text(this.scale.width / 2, 80, "Group Lobby", {
-        fontSize: "64px",
-        fontFamily: 'Georgia, "Times New Roman", serif',
-        fontStyle: "bold",
+  function showLevelOverlay(stageNumber, onComplete) {
+    const text = getDifficultyLabel(stageNumber);
+
+    const overlayBg = scene.add
+      .rectangle(scene.scale.width / 2, scene.scale.height / 2, 360, 90, 0x000000, 0.75)
+      .setStrokeStyle(2, 0xd8d8ff, 0.9)
+      .setScrollFactor(0)
+      .setDepth(1000)
+      .setAlpha(0);
+
+    const overlayText = scene.add
+      .text(scene.scale.width / 2, scene.scale.height / 2, text, {
+        fontSize: "28px",
         color: "#d8d8ff",
-        stroke: "#120c1c",
-        strokeThickness: 6,
+        fontStyle: "bold",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(1001)
+      .setAlpha(0);
 
-    this.nameText = this.add.text(
-      120,
-      170,
-      `Name: ${this.playerName || "Not set"}`,
-      {
-        fontSize: "28px",
-        color: "#ffffff",
-      }
-    );
+    state.levelOverlay = { overlayBg, overlayText };
 
-    this.roomCodeText = this.add.text(
-      120,
-      210,
-      `Room Code: ${this.roomCode || "None"}`,
-      {
-        fontSize: "28px",
-        color: "#ffffff",
-      }
-    );
-
-    this.characterNameText = this.add.text(120, 250, "", {
-      fontSize: "28px",
-      color: "#ffffff",
-    });
-
-    this.bioText = this.add
-      .text(950, 370, "", {
-        fontSize: "22px",
-        color: "#e8e8fc",
-        wordWrap: { width: 380 },
-      })
-      .setOrigin(0.5);
-
-    this.statusText = this.add
-      .text(this.scale.width / 2, 150, "", {
-        fontSize: "24px",
-        color: "#ffb3b3",
-      })
-      .setOrigin(0.5);
-
-    this.playersTitle = this.add.text(120, 320, "Players in room:", {
-      fontSize: "30px",
-      color: "#d8d8ff",
-    });
-
-    this.playersText = this.add.text(120, 360, "No room joined yet", {
-      fontSize: "24px",
-      color: "#ffffff",
-      lineSpacing: 8,
-    });
-
-    this.createButtons();
-    this.updateCharacterView();
-
-    if (this.playerName) {
-      this.characterConfirmed = true;
-    }
-
-    if (this.lobbyState) {
-      this.renderLobbyState(this.lobbyState);
-    }
-
-    this.applyCharacterLockState();
-
-    this.handleLobbyUpdated = (payload) => {
-      this.lobbyState = payload;
-      this.roomCode = payload.roomCode;
-      localStorage.setItem("eldritchRoomCode", payload.roomCode);
-      this.renderLobbyState(payload);
-      this.statusText.setText("Joined lobby");
-
-      if (this.playerName) {
-        this.characterConfirmed = true;
-        this.applyCharacterLockState();
-      }
-    };
-
-    this.handleJoinError = (payload) => {
-      this.statusText.setText(payload.message || "Failed to join room");
-      const code = payload.code;
-      if (
-        code === "ROOM_IN_GAME" ||
-        code === "ROOM_NOT_FOUND" ||
-        code === "ROOM_ENDED" ||
-        code === "ROOM_FULL" ||
-        code === "NO_CHARACTER" ||
-        code === "INVALID_CHARACTER"
-      ) {
-        localStorage.removeItem("eldritchRoomCode");
-        this.roomCode = "";
-        this.roomCodeText.setText("Room Code: None");
-        this.applyCharacterLockState();
-      }
-    };
-
-    this.handleStartError = (payload) => {
-      this.statusText.setText(payload.message || "Could not start game");
-    };
-
-    this.handleRoundStarted = (payload) => {
-      const groupPlayers = (this.lobbyState?.players ?? []).map((player) => {
-        const frontendCharacter =
-          characters.find(
-            (c) =>
-              (c.character_id ?? c.id) ===
-              (player.character?.character_id ?? player.character?.id)
-          ) ?? player.character;
-
-        return {
-          userId: player.userId,
-          name: player.name,
-          character: frontendCharacter,
-        };
-      });
-
-      this.scene.start("EncounterScene", {
-        mode: "group",
-        roomCode: this.roomCode,
-        selectedIndex: this.selectedIndex,
-        roundStartedPayload: payload,
-        groupPlayers,
-      });
-    };
-
-    this.events.once("shutdown", () => {
-      this.shutdown();
-    });
-
-    onLobbyUpdated(this.handleLobbyUpdated);
-    onJoinError(this.handleJoinError);
-    onStartError(this.handleStartError);
-    onRoundStarted(this.handleRoundStarted);
-
-    requestLobby();
-  }
-
-  createButtons() {
-    const buttonStyle = {
-      fontSize: "30px",
-      color: "#ffffff",
-      backgroundColor: "#4949494f",
-      padding: { left: 10, right: 10, top: 6, bottom: 6 },
-    };
-
-    this.setNameButton = this.add
-      .text(500, 540, "Select Character", buttonStyle)
-      .setInteractive({ useHandCursor: true });
-
-    this.prevCharacterButton = this.add
-      .text(120, 590, "Previous Character", buttonStyle)
-      .setInteractive({ useHandCursor: true });
-
-    this.nextCharacterButton = this.add
-      .text(950, 590, "Next Character", buttonStyle)
-      .setInteractive({ useHandCursor: true });
-
-    this.createRoomButton = this.add
-      .text(120, 650, "Create Room", buttonStyle)
-      .setInteractive({ useHandCursor: true });
-
-    this.joinRoomButton = this.add
-      .text(360, 650, "Join Room", buttonStyle)
-      .setInteractive({ useHandCursor: true });
-
-    this.leaveRoomButton = this.add
-      .text(560, 650, "Leave Room", buttonStyle)
-      .setInteractive({ useHandCursor: true });
-
-    this.startButton = this.add
-      .text(this.scale.width / 500, 540, "Start Game", buttonStyle)
-      .setInteractive({ useHandCursor: true })
-      .setVisible(false);
-
-    this.backButton = this.add
-      .text(900, 650, "Back to title Screen", buttonStyle)
-      .setInteractive({ useHandCursor: true })
-      .setVisible(true);
-
-    this.setNameButton.on("pointerdown", () => {
-      this.openNamePrompt();
-    });
-
-    this.prevCharacterButton.on("pointerdown", () => {
-      if (this.characterConfirmed) return;
-      if (this.selectedIndex <= 0) return;
-      this.selectedIndex -= 1;
-      this.updateCharacterView();
-    });
-
-    this.nextCharacterButton.on("pointerdown", () => {
-      if (this.characterConfirmed) return;
-      if (this.selectedIndex >= characters.length - 1) return;
-      this.selectedIndex += 1;
-      this.updateCharacterView();
-    });
-
-    this.createRoomButton.on("pointerdown", () => {
-      this.tryJoinOrCreateRoom("");
-    });
-
-    this.joinRoomButton.on("pointerdown", () => {
-      this.openRoomCodePrompt();
-    });
-
-    this.leaveRoomButton.on("pointerdown", () => {
-      localStorage.removeItem("eldritchRoomCode");
-      localStorage.removeItem("eldritchCharacter");
-      localStorage.removeItem("eldritchName");
-      this.handleLeaveRoom();
-    });
-
-    this.startButton.on("pointerdown", () => {
-      startGame();
-      this.sound.stopAll();
-      this.statusText.setText("Starting game...");
-    });
-
-    this.backButton.on("pointerdown", () => {
-      this.scene.start("HomePage");
+    scene.tweens.add({
+      targets: [overlayBg, overlayText],
+      alpha: 1,
+      duration: 200,
+      onComplete: () => {
+        scene.time.delayedCall(900, () => {
+          scene.tweens.add({
+            targets: [overlayBg, overlayText],
+            alpha: 0,
+            duration: 200,
+            onComplete: () => {
+              overlayBg.destroy();
+              overlayText.destroy();
+              state.levelOverlay = null;
+              if (onComplete) onComplete();
+            },
+          });
+        });
+      },
     });
   }
 
-  applyCharacterLockState() {
-    const shouldHideCharacterControls =
-      this.characterConfirmed || !!this.roomCode || !!this.lobbyState;
+  function applyRoundStartedPayload(payload) {
+    const { monster, question, gameState } = payload;
 
-    this.setNameButton.setVisible(!shouldHideCharacterControls);
-    this.prevCharacterButton.setVisible(!shouldHideCharacterControls);
-    this.nextCharacterButton.setVisible(!shouldHideCharacterControls);
+    if (!monster || !question || !gameState) {
+      console.error("Invalid roundStartedPayload:", payload);
+      return;
+    }
 
-    if (shouldHideCharacterControls) {
-      this.setNameButton.disableInteractive();
-      this.prevCharacterButton.disableInteractive();
-      this.nextCharacterButton.disableInteractive();
+    state.currentQuestionId = question.id;
+    state.roundDeadline = gameState.roundDeadline;
+    state.teamHp = gameState.teamHp;
+    state.teamHpMax ??= gameState.maxTeamHp ?? gameState.teamHp;
+    state.monsterMaxHp = monster.maxHp;
+    state.currentMonsterHp = monster.hp;
+
+    if (!scene.textures.exists(monster.image_name)) {
+      console.warn("Missing monster texture:", monster.image_name);
+    }
+
+    if (!state.groupMonsterSprite) {
+      state.groupMonsterSprite = scene.add
+        .image(980, 340, monster.image_name)
+        .setOrigin(0.5)
+        .setScale(0.5);
     } else {
-      this.setNameButton.setInteractive({ useHandCursor: true });
-      this.prevCharacterButton.setInteractive({ useHandCursor: true });
-      this.nextCharacterButton.setInteractive({ useHandCursor: true });
+      scene.tweens.killTweensOf(state.groupMonsterSprite);
+      state.groupMonsterSprite.clearTint();
+      state.groupMonsterSprite.setTexture(monster.image_name);
+      state.groupMonsterSprite.setPosition(980, 340);
+      state.groupMonsterSprite.setScale(0.5);
     }
-  }
 
-  renderLobbyState(payload) {
-    this.roomCode = payload.roomCode;
-    this.roomCodeText.setText(`Room Code: ${this.roomCode}`);
+    stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+    state.monsterIdleTween = playMonsterIdleFx(scene, state.groupMonsterSprite);
 
-    const playerLines = payload.players.map((player, index) => {
-      const hostLabel = player.userId === payload.hostUserId ? " (Host)" : "";
-      return `${index + 1}. ${player.name}${hostLabel} - ${
-        player.character.name
-      }`;
+    ui.setHud({
+      player: {
+        hp: state.teamHp,
+        maxHp: state.teamHpMax,
+      },
+      monster: {
+        hp: monster.hp,
+        maxHp: monster.maxHp,
+      },
     });
 
-    this.playersText.setText(playerLines.join("\n"));
-    this.startButton.setVisible(true);
+    ui.unlockAnswers();
 
-    const currentUserId = localStorage.getItem("eldritchUserId");
-    const me = payload.players.find(
-      (player) => player.userId === currentUserId
+    ui.setQuestion({
+      prompt: question.prompt,
+      options: [
+        question.options.a,
+        question.options.b,
+        question.options.c,
+        question.options.d,
+      ],
+    });
+
+    startRoundCountdown();
+  }
+
+  function startRoundCountdown() {
+    if (state.countdownEvent) {
+      state.countdownEvent.remove(false);
+    }
+
+    const updateTimer = () => {
+      const msLeft = state.roundDeadline - Date.now();
+      const secondsLeft = Math.max(0, Math.ceil(msLeft / 1000));
+      ui.setTimer(secondsLeft);
+    };
+
+    updateTimer();
+
+    state.countdownEvent = scene.time.addEvent({
+      delay: 250,
+      loop: true,
+      callback: () => {
+        updateTimer();
+
+        if (Date.now() >= state.roundDeadline) {
+          ui.setTimer(0);
+          state.countdownEvent.remove(false);
+          state.countdownEvent = null;
+        }
+      },
+    });
+  }
+
+  function swapMonster(nextMonster) {
+    state.monsterMaxHp = nextMonster.max_hp;
+    state.currentMonsterHp = nextMonster.max_hp;
+
+    if (state.battle) {
+      state.battle.resetMonsterHp();
+    }
+
+    if (!scene.textures.exists(nextMonster.image_name)) {
+      console.warn("Missing next monster texture:", nextMonster.image_name);
+    }
+
+    if (!state.groupMonsterSprite) {
+      state.groupMonsterSprite = scene.add
+        .image(980, 340, nextMonster.image_name)
+        .setOrigin(0.5)
+        .setScale(0.5);
+    } else {
+      scene.tweens.killTweensOf(state.groupMonsterSprite);
+      state.groupMonsterSprite.clearTint();
+      state.groupMonsterSprite.setTexture(nextMonster.image_name);
+      state.groupMonsterSprite.setPosition(980, 340);
+      state.groupMonsterSprite.setScale(0.5);
+    }
+
+    stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+    state.monsterIdleTween = playMonsterIdleFx(scene, state.groupMonsterSprite);
+  }
+
+  function runPendingStageTransitionIfNeeded() {
+    if (!state.pendingStageTransition) return;
+
+    const { nextMonster, stageNumber } = state.pendingStageTransition;
+    state.pendingStageTransition = null;
+
+    showLevelOverlay(stageNumber, () => {
+      swapMonster(nextMonster);
+      maybeFinishRoundFlow();
+    });
+  }
+
+  function maybeFinishRoundFlow() {
+    if (!state.readyDelayDone) return;
+    if (state.pendingFxCount > 0) return;
+
+    if (state.pendingStageTransition) {
+      runPendingStageTransitionIfNeeded();
+      return;
+    }
+
+    state.isPlayingHitFx = false;
+
+    if (state.pendingRoundStartedPayload) {
+      const nextPayload = state.pendingRoundStartedPayload;
+      state.pendingRoundStartedPayload = null;
+      applyRoundStartedPayload(nextPayload);
+      return;
+    }
+
+    console.log("sending clientReady");
+    clientReady();
+  }
+
+  function onRoundResultHandler(payload) {
+    const correctIndex = ["a", "b", "c", "d"].indexOf(payload.correctOption);
+
+    let chosenIndex = -1;
+    const myUserId = localStorage.getItem("eldritchUserId");
+    const myResult = payload.playerResults?.find(
+      (player) => player.userId === myUserId
     );
 
-    if (me) {
-      this.playerName = me.name;
-      this.nameText.setText(`Name: ${this.playerName}`);
+    if (myResult?.answer) {
+      chosenIndex = ["a", "b", "c", "d"].indexOf(myResult.answer);
+    }
 
-      const matchedIndex = characters.findIndex(
-        (c) =>
-          (c.character_id ?? c.id) ===
-          (me.character?.character_id ?? me.character?.id)
+    if (correctIndex !== -1) {
+      ui.showAnswerFeedback(correctIndex, chosenIndex);
+    }
+
+    const playerDamage = state.teamHp - payload.teamHpAfter;
+    const monsterDamage = state.currentMonsterHp - payload.monsterHpAfter;
+
+    if (state.teamHp > payload.teamHpAfter) {
+      state.battle.applyDamage(
+        playerDamage,
+        true,
+        state.teamHp,
+        state.teamHpMax
+      );
+    }
+
+    if (state.currentMonsterHp > payload.monsterHpAfter) {
+      state.battle.applyMonsterDamage(
+        monsterDamage,
+        false,
+        state.currentMonsterHp,
+        state.monsterMaxHp
+      );
+    }
+
+    const monsterHpBefore = state.currentMonsterHp;
+    const monsterHpAfter = payload.monsterHpAfter;
+    const monsterTookDamage = monsterHpAfter < monsterHpBefore;
+    const playerTookDamage = state.teamHp > payload.teamHpAfter;
+
+    state.teamHp = payload.teamHpAfter;
+    state.currentMonsterHp = monsterHpAfter;
+
+    ui.setHud({
+      player: {
+        hp: payload.teamHpAfter,
+        maxHp: state.teamHpMax ?? payload.teamHpAfter,
+      },
+      monster: {
+        hp: monsterHpAfter,
+        maxHp: state.monsterMaxHp ?? monsterHpAfter,
+      },
+    });
+
+    if (payload.isNextStage && payload.nextMonster) {
+      state.pendingStageTransition = {
+        nextMonster: payload.nextMonster,
+        stageNumber: payload.nextMonster.stage ?? payload.nextMonster.level ?? 2,
+      };
+    }
+
+    state.isPlayingHitFx = true;
+    state.pendingFxCount = 0;
+    state.readyDelayDone = false;
+
+    if (state.readyDelayEvent) {
+      state.readyDelayEvent.remove(false);
+      state.readyDelayEvent = null;
+    }
+
+    state.readyDelayEvent = scene.time.delayedCall(900, () => {
+      state.readyDelayDone = true;
+      state.readyDelayEvent = null;
+      maybeFinishRoundFlow();
+    });
+
+    if (monsterTookDamage) {
+      state.pendingFxCount += 1;
+
+      stopMonsterIdleFx(
+        scene,
+        state.groupMonsterSprite,
+        state.monsterIdleTween
       );
 
-      if (matchedIndex !== -1) {
-        this.selectedIndex = matchedIndex;
-        this.updateCharacterView();
-      }
+      playMonsterHitFx(scene, state.groupMonsterSprite, monsterDamage, () => {
+        state.monsterIdleTween = playMonsterIdleFx(
+          scene,
+          state.groupMonsterSprite
+        );
+        state.pendingFxCount -= 1;
+        maybeFinishRoundFlow();
+      });
+    }
 
-      this.characterConfirmed = true;
-      this.applyCharacterLockState();
+    if (playerTookDamage) {
+      state.pendingFxCount += 1;
+
+      stopPlayerIdleFx(scene, state.playerSprites, state.playerIdleTweens);
+
+      playerFx(
+        scene,
+        state.playerSprites,
+        state.groupMonsterSprite,
+        playerDamage,
+        () => {
+          state.playerIdleTweens = playPlayerIdleFx(scene, state.playerSprites);
+          state.pendingFxCount -= 1;
+          maybeFinishRoundFlow();
+        }
+      );
+    }
+
+    if (!monsterTookDamage && !playerTookDamage) {
+      maybeFinishRoundFlow();
     }
   }
 
-  handleLeaveRoom() {
-    if (groupApi.leaveRoom) {
-      groupApi.leaveRoom();
-    }
-
-    this.lobbyState = null;
-    this.roomCode = "";
-    this.characterConfirmed = false;
-
-    this.roomCodeText.setText("Room Code: None");
-    this.playersText.setText("No room joined yet");
-    this.statusText.setText("Left room");
-    this.startButton.setVisible(false);
-
-    this.applyCharacterLockState();
-  }
-
-  updatePlayerName(name) {
-    this.playerName = name.trim();
-    this.nameText.setText(`Name: ${this.playerName || "Not set"}`);
-  }
-
-  updateRoomCode(code) {
-    this.roomCode = code.trim().toUpperCase();
-    this.roomCodeText.setText(`Room Code: ${this.roomCode || "None"}`);
-  }
-
-  openNamePrompt() {
-    this.openTextPrompt({
-      title: "Enter Name",
-      initialValue: this.playerName || "",
-      placeholder: "Type here...",
-      maxLength: 16,
-      forceUppercase: false,
-      onSave: (value) => {
-        this.updatePlayerName(value);
-        this.characterConfirmed = true;
-        this.applyCharacterLockState();
-      },
-    });
-  }
-
-  openRoomCodePrompt() {
-    this.openTextPrompt({
-      title: "Enter Room Code",
-      initialValue: this.roomCode || "",
-      placeholder: "ABCD",
-      maxLength: 8,
-      forceUppercase: true,
-      onSave: (value) => {
-        const code = value.trim().toUpperCase();
-        this.updateRoomCode(code);
-        this.tryJoinOrCreateRoom(code);
-      },
-    });
-  }
-
-  openTextPrompt({
-    title = "Enter Text",
-    initialValue = "",
-    placeholder = "Type here...",
-    maxLength = 16,
-    forceUppercase = false,
-    onSave,
-  }) {
-    const { width, height } = this.scale;
-
-    const overlay = this.add
-      .rectangle(0, 0, width, height, 0x000000, 0.55)
-      .setOrigin(0)
-      .setDepth(100)
-      .setInteractive();
-
-    const panel = this.add
-      .rectangle(width / 2, height / 2, 500, 240, 0x111111, 0.78)
-      .setStrokeStyle(2, 0xd8d8ff, 0.8)
-      .setDepth(101);
-
-    const titleText = this.add
-      .text(width / 2, height / 2 - 78, title, {
-        fontSize: "32px",
-        color: "#d8d8ff",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(102);
-
-    const inputHtml = `
-      <input
-        type="text"
-        id="modal-input"
-        value="${this.escapeHtml(initialValue)}"
-        placeholder="${this.escapeHtml(placeholder)}"
-        maxlength="${maxLength}"
-        autocapitalize="${forceUppercase ? "characters" : "words"}"
-        autocomplete="off"
-        autocorrect="off"
-        spellcheck="false"
-        style="
-          width: 320px;
-          height: 44px;
-          padding: 0 14px;
-          border-radius: 10px;
-          border: 1px solid rgba(255,255,255,0.45);
-          outline: none;
-          background: rgba(34,34,51,0.88);
-          color: white;
-          font-size: 24px;
-          font-family: Georgia, 'Times New Roman', serif;
-          box-sizing: border-box;
-          text-align: left;
-        "
-      />
-    `;
-
-    const inputDom = this.add
-      .dom(width / 2, height / 2 - 8)
-      .createFromHTML(inputHtml)
-      .setDepth(103);
-
-    const inputEl = inputDom.node.querySelector("#modal-input");
-
-    const saveButton = this.add
-      .rectangle(width / 2 - 80, height / 2 + 78, 120, 45, 0x2d6a4f, 0.9)
-      .setStrokeStyle(1, 0xffffff, 0.5)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(101);
-
-    const saveText = this.add
-      .text(width / 2 - 80, height / 2 + 78, "Save", {
-        fontSize: "22px",
-        color: "#ffffff",
-      })
-      .setOrigin(0.5)
-      .setDepth(102);
-
-    const cancelButton = this.add
-      .rectangle(width / 2 + 80, height / 2 + 78, 120, 45, 0x7f1d1d, 0.9)
-      .setStrokeStyle(1, 0xffffff, 0.5)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(101);
-
-    const cancelText = this.add
-      .text(width / 2 + 80, height / 2 + 78, "Cancel", {
-        fontSize: "22px",
-        color: "#ffffff",
-      })
-      .setOrigin(0.5)
-      .setDepth(102);
-
-    const modalItems = [
-      overlay,
-      panel,
-      titleText,
-      inputDom,
-      saveButton,
-      saveText,
-      cancelButton,
-      cancelText,
-    ];
-
-    const closeModal = () => {
-      modalItems.forEach((item) => item.destroy());
-    };
-
-    const handleSubmit = () => {
-      let value = inputEl.value ?? "";
-
-      if (forceUppercase) {
-        value = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      }
-
-      value = value.trim();
-
-      if (!value) return;
-
-      onSave(value);
-      closeModal();
-    };
-
-    inputEl.addEventListener("input", () => {
-      if (forceUppercase) {
-        inputEl.value = inputEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      }
-    });
-
-    inputEl.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") handleSubmit();
-      if (event.key === "Escape") closeModal();
-    });
-
-    saveButton.on("pointerdown", () => {
-      handleSubmit();
-    });
-
-    cancelButton.on("pointerdown", () => {
-      closeModal();
-    });
-
-    this.time.delayedCall(50, () => {
-      inputEl.focus();
-      inputEl.select();
-    });
-  }
-
-  escapeHtml(value = "") {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
-  updateCharacterView() {
-    const currentCharacter = characters[this.selectedIndex];
-
-    this.characterNameText.setText(`Character: ${currentCharacter.name}`);
-    this.bioText.setText(currentCharacter.bio);
-
-    if (this.currentCharacterImage) {
-      this.currentCharacterImage.destroy();
-    }
-
-    this.currentCharacterImage = this.add
-      .image(this.scale.width / 2, 360, currentCharacter.image_name)
-      .setOrigin(0.5)
-      .setScale(0.35);
-  }
-
-  tryJoinOrCreateRoom(roomCode) {
-    if (!this.playerName) {
-      this.statusText.setText("Select Character first");
+  function onRoundStartedHandler(payload) {
+    if (state.isPlayingHitFx) {
+      state.pendingRoundStartedPayload = payload;
       return;
     }
 
-    const currentCharacter = characters[this.selectedIndex];
-    const characterId = currentCharacter.character_id ?? currentCharacter.id;
+    applyRoundStartedPayload(payload);
+  }
 
-    if (!characterId) {
-      this.statusText.setText("Character is missing backend character_id");
-      return;
-    }
+  function onGameEndedHandler(payload) {
+    localStorage.removeItem("eldritchRoomCode");
+    localStorage.removeItem("eldritchCharacter");
+    localStorage.removeItem("eldritchName");
+    let message = "Game Over";
 
-    let userId = localStorage.getItem("eldritchUserId");
+    if (payload.result === "victory" && !payload.isNextStage) {
+      scene.sound.stopAll();
+      scene.scene.start("Victory");
+    } else if (payload.result === "defeat") {
+      scene.sound.stopAll();
+      scene.scene.start("GameOver");
+    } else if (payload.result === "abandoned") message = "Abandoned";
 
-    if (!userId) {
-      userId = crypto.randomUUID();
-      localStorage.setItem("eldritchUserId", userId);
-    }
-
-    localStorage.setItem("eldritchRoomCode", roomCode);
-    localStorage.setItem("eldritchCharacter", characterId);
-    localStorage.setItem("eldritchName", this.playerName);
-
-    joinRoom({
-      name: this.playerName,
-      roomCode,
-      userId,
-      characterId,
+    ui.showEndOverlay(message, () => {
+      scene.scene.start("HomePage");
     });
-
-    this.statusText.setText(roomCode ? "Joining room..." : "Creating room...");
   }
 
-  shutdown() {
-    if (this.handleLobbyUpdated) offLobbyUpdated(this.handleLobbyUpdated);
-    if (this.handleJoinError) offJoinError(this.handleJoinError);
-    if (this.handleStartError) offStartError(this.handleStartError);
-    if (this.handleRoundStarted) offRoundStarted(this.handleRoundStarted);
+  function registerListeners() {
+    onRoundResult(onRoundResultHandler);
+    onRoundStarted(onRoundStartedHandler);
+    onGameEnded(onGameEndedHandler);
   }
 
-  destroy() {
-    this.shutdown();
+  function shutdown() {
+    offRoundResult(onRoundResultHandler);
+    offRoundStarted(onRoundStartedHandler);
+    offGameEnded(onGameEndedHandler);
+
+    if (state.countdownEvent) {
+      state.countdownEvent.remove(false);
+      state.countdownEvent = null;
+    }
+
+    if (state.readyDelayEvent) {
+      state.readyDelayEvent.remove(false);
+      state.readyDelayEvent = null;
+    }
+
+    if (state.levelOverlay) {
+      state.levelOverlay.overlayBg.destroy();
+      state.levelOverlay.overlayText.destroy();
+      state.levelOverlay = null;
+    }
+
+    stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
+    stopPlayerIdleFx(scene, state.playerSprites, state.playerIdleTweens);
+    state.monsterIdleTween = null;
+    state.playerIdleTweens = [];
+
+    if (state.groupMonsterSprite) {
+      scene.tweens.killTweensOf(state.groupMonsterSprite);
+      state.groupMonsterSprite.destroy();
+      state.groupMonsterSprite = null;
+    }
+
+    state.playerSprites.forEach((sprite) => {
+      scene.tweens.killTweensOf(sprite);
+      sprite.destroy();
+    });
+    state.playerSprites = [];
   }
+
+  return {
+    start,
+    handleAnswer,
+    shutdown,
+  };
 }
