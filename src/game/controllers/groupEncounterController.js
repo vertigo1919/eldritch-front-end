@@ -1,24 +1,24 @@
-import battleController from "../battleController";
-import applyDamage from "../battleLogic";
-import { playerFx } from "../playerFx";
+import battleController from '../battleController';
+import applyDamage from '../battleLogic';
+import { playerFx } from '../playerFx';
 import {
-  submitAnswer,
-  clientReady,
-  onRoundResult,
-  offRoundResult,
-  onGameEnded,
-  offGameEnded,
-  onRoundStarted,
-  offRoundStarted,
-} from "../net/groupApi";
+	submitAnswer,
+	clientReady,
+	onRoundResult,
+	offRoundResult,
+	onGameEnded,
+	offGameEnded,
+	onRoundStarted,
+	offRoundStarted,
+} from '../net/groupApi';
 
-import { createPlayerSprites } from "../ui/characterLoadingUI";
+import { createPlayerSprites } from '../ui/characterLoadingUI';
 import {
-  playMonsterHitFx,
-  playMonsterIdleFx,
-  stopMonsterIdleFx,
-} from "../monsterfx";
-import { playPlayerIdleFx, stopPlayerIdleFx } from "../playerFx";
+	playMonsterHitFx,
+	playMonsterIdleFx,
+	stopMonsterIdleFx,
+} from '../monsterfx';
+import { playPlayerIdleFx, stopPlayerIdleFx } from '../playerFx';
 
 export function createGroupEncounterController(scene, ui, sceneData) {
   const state = {
