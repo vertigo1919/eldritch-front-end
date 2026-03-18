@@ -34,6 +34,7 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     teamHpMax: null,
     monsterMaxHp: null,
     currentMonsterHp: null,
+    currentStageNumber: 1,
     isPlayingHitFx: false,
     battle: null,
     pendingRoundStartedPayload: null,
@@ -42,6 +43,8 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     readyDelayEvent: null,
     monsterIdleTween: null,
     playerIdleTweens: [],
+    pendingStageTransition: null,
+    levelOverlay: null,
   };
 
   function start() {
@@ -56,13 +59,20 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     state.playerSprites = createPlayerSprites(scene, state.groupPlayers);
     state.playerIdleTweens = playPlayerIdleFx(scene, state.playerSprites);
 
-    applyRoundStartedPayload(state.roundStartedPayload);
     registerListeners();
     state.battle = battleController(
       scene,
       ui.playerHealthBar,
       ui.monsterHealthBar
     );
+
+    const firstStageNumber = getStageNumberFromPayload(
+      state.roundStartedPayload
+    );
+
+    showLevelOverlay(firstStageNumber, () => {
+      applyRoundStartedPayload(state.roundStartedPayload);
+    });
   }
 
   function handleAnswer(index) {
@@ -78,6 +88,75 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     console.log("submitted group answer:", answer);
   }
 
+  function getDifficultyLabel(stageNumber) {
+    if (stageNumber === 1) return "Level 1 - Easy";
+    if (stageNumber === 2) return "Level 2 - Medium";
+    if (stageNumber === 3) return "Level 3 - Hard";
+    return `Level ${stageNumber}`;
+  }
+
+  function getStageNumberFromPayload(payload) {
+    return (
+      payload?.monster?.stage ??
+      payload?.monster?.level ??
+      payload?.gameState?.stage ??
+      payload?.gameState?.level ??
+      1
+    );
+  }
+
+  function showLevelOverlay(stageNumber, onComplete) {
+    const text = getDifficultyLabel(stageNumber);
+
+    const overlayBg = scene.add
+      .rectangle(
+        scene.scale.width / 2,
+        scene.scale.height / 2,
+        360,
+        90,
+        0x000000,
+        0.75
+      )
+      .setStrokeStyle(2, 0xd8d8ff, 0.9)
+      .setScrollFactor(0)
+      .setDepth(1000)
+      .setAlpha(0);
+
+    const overlayText = scene.add
+      .text(scene.scale.width / 2, scene.scale.height / 2, text, {
+        fontSize: "28px",
+        color: "#d8d8ff",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(1001)
+      .setAlpha(0);
+
+    state.levelOverlay = { overlayBg, overlayText };
+
+    scene.tweens.add({
+      targets: [overlayBg, overlayText],
+      alpha: 1,
+      duration: 200,
+      onComplete: () => {
+        scene.time.delayedCall(900, () => {
+          scene.tweens.add({
+            targets: [overlayBg, overlayText],
+            alpha: 0,
+            duration: 200,
+            onComplete: () => {
+              overlayBg.destroy();
+              overlayText.destroy();
+              state.levelOverlay = null;
+              if (onComplete) onComplete();
+            },
+          });
+        });
+      },
+    });
+  }
+
   function applyRoundStartedPayload(payload) {
     const { monster, question, gameState } = payload;
 
@@ -86,6 +165,7 @@ export function createGroupEncounterController(scene, ui, sceneData) {
       return;
     }
 
+    state.currentStageNumber = getStageNumberFromPayload(payload);
     state.currentQuestionId = question.id;
     state.roundDeadline = gameState.roundDeadline;
     state.teamHp = gameState.teamHp;
@@ -168,8 +248,10 @@ export function createGroupEncounterController(scene, ui, sceneData) {
   }
 
   function swapMonster(nextMonster) {
-    state.monsterMaxHp = nextMonster.max_hp;
-    state.currentMonsterHp = nextMonster.max_hp;
+    const nextMonsterMaxHp = nextMonster.maxHp ?? nextMonster.max_hp;
+
+    state.monsterMaxHp = nextMonsterMaxHp;
+    state.currentMonsterHp = nextMonsterMaxHp;
 
     if (state.battle) {
       state.battle.resetMonsterHp();
@@ -196,9 +278,26 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     state.monsterIdleTween = playMonsterIdleFx(scene, state.groupMonsterSprite);
   }
 
+  function runPendingStageTransitionIfNeeded() {
+    if (!state.pendingStageTransition) return;
+
+    const { nextMonster, stageNumber } = state.pendingStageTransition;
+    state.pendingStageTransition = null;
+
+    showLevelOverlay(stageNumber, () => {
+      swapMonster(nextMonster);
+      maybeFinishRoundFlow();
+    });
+  }
+
   function maybeFinishRoundFlow() {
     if (!state.readyDelayDone) return;
     if (state.pendingFxCount > 0) return;
+
+    if (state.pendingStageTransition) {
+      runPendingStageTransitionIfNeeded();
+      return;
+    }
 
     state.isPlayingHitFx = false;
 
@@ -241,6 +340,7 @@ export function createGroupEncounterController(scene, ui, sceneData) {
         state.teamHpMax
       );
     }
+
     if (state.currentMonsterHp > payload.monsterHpAfter) {
       state.battle.applyMonsterDamage(
         monsterDamage,
@@ -270,8 +370,18 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     });
 
     if (payload.isNextStage && payload.nextMonster) {
-      state.battle.resetMonsterHp();
-      swapMonster(payload.nextMonster);
+      const nextStageNumber =
+        payload.nextMonster.stage ??
+        payload.nextMonster.level ??
+        payload.nextStage ??
+        payload.stage ??
+        payload.gameState?.stage ??
+        state.currentStageNumber + 1;
+
+      state.pendingStageTransition = {
+        nextMonster: payload.nextMonster,
+        stageNumber: nextStageNumber,
+      };
     }
 
     state.isPlayingHitFx = true;
@@ -352,7 +462,9 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     } else if (payload.result === "defeat") {
       scene.sound.stopAll();
       scene.scene.start("GameOver");
-    } else if (payload.result === "abandoned") message = "Abandoned";
+    } else if (payload.result === "abandoned") {
+      message = "Abandoned";
+    }
 
     ui.showEndOverlay(message, () => {
       scene.scene.start("HomePage");
@@ -378,6 +490,12 @@ export function createGroupEncounterController(scene, ui, sceneData) {
     if (state.readyDelayEvent) {
       state.readyDelayEvent.remove(false);
       state.readyDelayEvent = null;
+    }
+
+    if (state.levelOverlay) {
+      state.levelOverlay.overlayBg.destroy();
+      state.levelOverlay.overlayText.destroy();
+      state.levelOverlay = null;
     }
 
     stopMonsterIdleFx(scene, state.groupMonsterSprite, state.monsterIdleTween);
