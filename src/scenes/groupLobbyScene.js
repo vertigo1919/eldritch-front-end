@@ -219,7 +219,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
 			.setInteractive({ useHandCursor: true });
 
 		this.startButton = this.add
-			.text(this.scale.width / 500, 540, 'Start Game', buttonStyle)
+			.text(500, 540, 'Start Game', buttonStyle)
 			.setInteractive({ useHandCursor: true })
 			.setVisible(false);
 
