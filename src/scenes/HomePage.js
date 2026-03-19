@@ -55,10 +55,10 @@ export default class HomePage extends Phaser.Scene {
     createMuteToggle(this, "backgroundmp3");
   }
 
-  createBackground() {
-    const bg = this.add.image(0, 0, "background").setOrigin(0);
-    createMuteToggle(this, "backgroundmp3");
-  }
+  // createBackground() {
+  //   const bg = this.add.image(0, 0, "background").setOrigin(0);
+  //   createMuteToggle(this, "backgroundmp3");
+  // }
 
   createBackground() {
     const bg = this.add.image(0, 0, "backgroundnew").setOrigin(0);
