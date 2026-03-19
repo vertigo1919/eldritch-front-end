@@ -117,6 +117,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
 		this.handleLobbyUpdated = (payload) => {
 			this.lobbyState = payload;
 			this.roomCode = payload.roomCode;
+			localStorage.setItem('eldritchRoomCode', payload.roomCode);
 			this.renderLobbyState(payload);
 			this.statusText.setText('Joined lobby');
 
@@ -128,6 +129,20 @@ export default class GroupLobbyScene extends Phaser.Scene {
 
 		this.handleJoinError = (payload) => {
 			this.statusText.setText(payload.message || 'Failed to join room');
+			const code = payload.code;
+			if (
+				code === 'ROOM_IN_GAME' ||
+				code === 'ROOM_NOT_FOUND' ||
+				code === 'ROOM_ENDED' ||
+				code === 'ROOM_FULL' ||
+				code === 'NO_CHARACTER' ||
+				code === 'INVALID_CHARACTER'
+			) {
+				localStorage.removeItem('eldritchRoomCode');
+				this.roomCode = '';
+				this.roomCodeText.setText('Room Code: None');
+				this.applyCharacterLockState();
+			}
 		};
 
 		this.handleStartError = (payload) => {
@@ -204,7 +219,7 @@ export default class GroupLobbyScene extends Phaser.Scene {
 			.setInteractive({ useHandCursor: true });
 
 		this.startButton = this.add
-			.text(this.scale.width / 500, 540, 'Start Game', buttonStyle)
+			.text(500, 540, 'Start Game', buttonStyle)
 			.setInteractive({ useHandCursor: true })
 			.setVisible(false);
 
@@ -240,12 +255,15 @@ export default class GroupLobbyScene extends Phaser.Scene {
 		});
 
 		this.leaveRoomButton.on('pointerdown', () => {
+			localStorage.removeItem('eldritchRoomCode');
+			localStorage.removeItem('eldritchCharacter');
+			localStorage.removeItem('eldritchName');
 			this.handleLeaveRoom();
 		});
 
 		this.startButton.on('pointerdown', () => {
 			startGame();
-			this.sound.stopAll();
+
 			this.statusText.setText('Starting game...');
 		});
 
@@ -279,7 +297,9 @@ export default class GroupLobbyScene extends Phaser.Scene {
 
 		const playerLines = payload.players.map((player, index) => {
 			const hostLabel = player.userId === payload.hostUserId ? ' (Host)' : '';
-			return `${index + 1}. ${player.name}${hostLabel} - ${player.character.name}`;
+			return `${index + 1}. ${player.name}${hostLabel} - ${
+				player.character.name
+			}`;
 		});
 
 		this.playersText.setText(playerLines.join('\n'));
@@ -554,10 +574,15 @@ export default class GroupLobbyScene extends Phaser.Scene {
 		}
 
 		let userId = localStorage.getItem('eldritchUserId');
+
 		if (!userId) {
 			userId = crypto.randomUUID();
 			localStorage.setItem('eldritchUserId', userId);
 		}
+
+		localStorage.setItem('eldritchRoomCode', roomCode);
+		localStorage.setItem('eldritchCharacter', characterId);
+		localStorage.setItem('eldritchName', this.playerName);
 
 		joinRoom({
 			name: this.playerName,

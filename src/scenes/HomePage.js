@@ -4,6 +4,7 @@ import backgroundmp3 from "../assets/background.mp3";
 import createMuteToggle from "../game/ui/BackgroundMusicToggle";
 import buttonBg from "../assets/buttonNormal.png";
 import buttonHighlight from "../assets/buttonhighlight.png";
+import backgroundnew from "../assets/bg.png";
 
 import mute from "../assets/mute.png";
 
@@ -30,6 +31,7 @@ export default class HomePage extends Phaser.Scene {
     this.load.image("mute", mute);
     this.load.image("buttonBg", buttonBg);
     this.load.image("buttonHighlight", buttonHighlight);
+    this.load.image("backgroundnew", backgroundnew);
 
     // character assets
     // keys must match your character.image_name values
@@ -63,6 +65,19 @@ export default class HomePage extends Phaser.Scene {
 
   createBackground() {
     const bg = this.add.image(0, 0, "background").setOrigin(0);
+    createMuteToggle(this, "backgroundmp3");
+
+    //   this.add
+    //     .text(this.scale.width / 2, 100, "Forbidden Knowledge", {
+    //       fontSize: "64px",
+    //       fontFamily: "Blackletter",
+    //       color: "#FFFFFF",
+    //     })
+    //     .setOrigin(0.5);
+  }
+
+  createBackground() {
+    const bg = this.add.image(0, 0, "backgroundnew").setOrigin(0);
     const scaleX = this.scale.width / bg.width;
     const scaleY = this.scale.height / bg.height;
     bg.setScale(Math.max(scaleX, scaleY));
@@ -175,6 +190,8 @@ export default class HomePage extends Phaser.Scene {
       console.log("leaderboard button is pressed");
       this.sound.stopAll();
       this.scene.start("LeaderboardScene");
+
+      this.scene.start("GroupLobbyScene");
     });
   }
 }
