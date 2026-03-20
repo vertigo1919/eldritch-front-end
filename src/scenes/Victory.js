@@ -1,11 +1,10 @@
 import Phaser from 'phaser';
-import background from '../assets/background.png';
-import victory from '../assets/victory.png';
 import buttonBg from '../assets/buttonNormal.png';
 import activeButton from '../assets/buttonhighlight.png';
 import mute from '../assets/mute.png';
 import victoryMusic from '../assets/victory.mp3';
 import createMuteToggle from '../game/ui/BackgroundMusicToggle';
+import victoryBg from '../assets/victoryBg.png';
 
 export default class Victory extends Phaser.Scene {
 	constructor() {
@@ -13,43 +12,32 @@ export default class Victory extends Phaser.Scene {
 	}
 
 	preload() {
-		this.load.image('background', background);
-		this.load.image('victory', victory);
 		this.load.image('buttonBg', buttonBg);
 		this.load.image('activeButton', activeButton);
 		this.load.audio('victoryMusic', victoryMusic);
 		this.load.image('mute', mute);
+		this.load.image('victoryBg', victoryBg);
 	}
 
 	create() {
 		this.createBackground();
 		createMuteToggle(this, 'victoryMusic');
 
-		const victoryImg = this.add
-			.image(this.scale.width / 2, this.scale.height / 2, 'victory')
-			.setOrigin(0.5)
-			.setScale(0.5);
-
-		const victoryTitle = this.add
-			.text(this.scale.width / 2, 100, 'Victory', {
-				fontSize: '64px',
-				fontFamily: 'Blackletter',
-				color: '#FFFFFF',
-			})
-			.setOrigin(0.5);
-
 		this.createContinueButton();
 	}
 
 	createBackground() {
-		const background = this.add.image(0, 0, 'background').setOrigin(0);
+		const background = this.add
+			.image(0, 0, 'victoryBg')
+			.setOrigin(0)
+			.setDepth(0);
 		const scaleX = this.scale.width / background.width;
 		const scaleY = this.scale.height / background.height;
 		background.setScale(Math.max(scaleX, scaleY));
 	}
 
 	createContinueButton() {
-		const continueButton = this.add
+		this.add
 			.text(this.scale.width / 2, 650, 'Continue', {
 				fontSize: '32px',
 				color: '#FFFFFF',

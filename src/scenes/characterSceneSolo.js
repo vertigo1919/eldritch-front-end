@@ -119,6 +119,7 @@ export default class CharacterSceneSolo extends Phaser.Scene {
     submitButton.on("pointerdown", () => {
       this.openNamePrompt(counter);
     });
+    this.createHomeButton();
   }
 
   openNamePrompt(selectedIndex) {
@@ -267,5 +268,22 @@ export default class CharacterSceneSolo extends Phaser.Scene {
       .replace(/"/g, "&quot;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+  }
+
+  createHomeButton() {
+    const buttonStyle = {
+      fontSize: "30px",
+      color: "#ffffff",
+      backgroundColor: "#4949494f",
+      padding: { left: 10, right: 10, top: 6, bottom: 6 },
+    };
+
+    this.homeButton = this.add
+      .text(100, 650, "Return to Home", buttonStyle)
+      .setInteractive({ useHandCursor: true });
+
+    this.homeButton.on("pointerdown", () => {
+      this.scene.start("HomePage");
+    });
   }
 }

@@ -53,28 +53,12 @@ export default class HomePage extends Phaser.Scene {
     this.createTeamButton();
     this.createLeaderboardButton();
     createMuteToggle(this, "backgroundmp3");
-
-    this.add
-      .text(this.scale.width / 2, 100, "Forbidden Knowledge", {
-        fontSize: "64px",
-        fontFamily: "Blackletter",
-        color: "#FFFFFF",
-      })
-      .setOrigin(0.5);
   }
 
-  createBackground() {
-    const bg = this.add.image(0, 0, "background").setOrigin(0);
-    createMuteToggle(this, "backgroundmp3");
-
-    //   this.add
-    //     .text(this.scale.width / 2, 100, "Forbidden Knowledge", {
-    //       fontSize: "64px",
-    //       fontFamily: "Blackletter",
-    //       color: "#FFFFFF",
-    //     })
-    //     .setOrigin(0.5);
-  }
+  // createBackground() {
+  //   const bg = this.add.image(0, 0, "background").setOrigin(0);
+  //   createMuteToggle(this, "backgroundmp3");
+  // }
 
   createBackground() {
     const bg = this.add.image(0, 0, "backgroundnew").setOrigin(0);
@@ -103,7 +87,7 @@ export default class HomePage extends Phaser.Scene {
       .setDepth(0)
       .setScale(0.225, 0.245);
 
-    const soloButton = this.add
+    this.add
       .text(this.scale.width / 2, 400, "Adventure Alone", {
         fontSize: "32px",
         color: "#FFFFFF",
@@ -140,7 +124,7 @@ export default class HomePage extends Phaser.Scene {
       .setDepth(0)
       .setScale(0.225, 0.245);
 
-    const teamButton = this.add
+    this.add
       .text(this.scale.width / 2, 500, "Adventure Together", {
         fontSize: "32px",
         color: "#FFFFFF",
@@ -176,7 +160,7 @@ export default class HomePage extends Phaser.Scene {
       .setDepth(0)
       .setScale(0.225, 0.245);
 
-    const leaderboardButton = this.add
+    this.add
       .text(this.scale.width / 2, 600, "Leaderboard", {
         fontSize: "32px",
         color: "#FFFFFF",
@@ -190,8 +174,6 @@ export default class HomePage extends Phaser.Scene {
       console.log("leaderboard button is pressed");
       this.sound.stopAll();
       this.scene.start("LeaderboardScene");
-
-      this.scene.start("GroupLobbyScene");
     });
   }
 }
