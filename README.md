@@ -11,7 +11,7 @@ Backend repo: https://github.com/vertigo1919/eldritch-backend
 
 ---
 
-## 🛠️ Running Locally
+## Running Locally
 
 Pre-requisite:  backend locally installed (https://github.com/vertigo1919/eldritch-backend) and running.
 
