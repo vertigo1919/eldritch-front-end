@@ -1,11 +1,8 @@
 # Eldritch Game - Frontend
 
-
-<p align="center">
-  <a href="https://eldritch-game.netlify.app/">🎮 Game demo</a> ·
-  <a href="https://github.com/vertigo1919/eldritch-backend">🧠 Backend repo</a> ·
-</p>
-
+[🎮 Game demo](https://eldritch-game.netlify.app/)  
+[🧠 Backend repo](https://github.com/vertigo1919/eldritch-backend)
+  
 **Eldritch** is a browser-based multiplayer horror quiz RPG, built as part of a collaborative full-stack project for my Northcoders bootcamp final project.
 
 The frontend is built using **Phaser**. Players battle eldritch monsters by answering questions, either solo or as part of a team. 
