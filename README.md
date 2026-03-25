@@ -5,7 +5,7 @@
   
 **Eldritch** is a browser-based multiplayer horror quiz RPG, built as part of a collaborative full-stack project for my Northcoders bootcamp final project. The frontend is built using **Phaser**. Players battle eldritch monsters by answering questions, either solo or as part of a team. 
 
-This was developed as part of a group project, where we collaborated on designing the overall game logic, integrating frontend and backend systems, building real-time multiplayer interactions, and maintaining shared standards for code and structure. My role was to design and build [the backend multiplayer game engine](https://github.com/vertigo1919/eldritch-backend) that powers this frontend, using Node.js, Socket.IO, and PostgreSQL to implement synced combat, match history, and reconnection-safe game state.
+This was developed as part of a group project. We collaborated on the overall game design, integrating frontend and backend systems while maintaining shared standards for code and structure. My role was to design and build [the backend multiplayer game engine](https://github.com/vertigo1919/eldritch-backend) that powers this frontend, using Node.js, Socket.IO, and PostgreSQL.
 
 ## Running Locally
 
