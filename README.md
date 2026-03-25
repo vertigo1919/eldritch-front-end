@@ -4,11 +4,10 @@
 
 The frontend is built using **Phaser**. Players battle eldritch monsters by answering questions, either solo or as part of a team. 
 
-My role was to design and write the backend multi-player game engine that powers this fornt end, using Socket.IO Node abd PostgreSQL to implement synced combat, match history, and reconnection-safe game state. 
+My role was to design and write [the backend multi-player game engine](https://github.com/vertigo1919/eldritch-backend) that powers this fornt end, using Socket.IO Node abd PostgreSQL to implement synced combat, match history, and reconnection-safe game state. 
 
-Game demo: https://eldritch-game.netlify.app/
-Backend repo: https://github.com/vertigo1919/eldritch-backend
-
+- [🎮 Game demo](https://eldritch-game.netlify.app/)  
+- [🧠 Backend repo](https://github.com/vertigo1919/eldritch-backend)
 ---
 
 ## Running Locally
