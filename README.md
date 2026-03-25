@@ -27,7 +27,7 @@ Players:
 - progress through multiple stages  
 - fight increasingly difficult monsters  
 
-## 🧩 Frontend Responsibilities
+## Frontend Responsibilities
 
 The frontend acts as the game client responsible for everything the player sees and interacts with.
 
