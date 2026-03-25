@@ -55,9 +55,9 @@ The frontend acts as the game client responsible for everything the player sees 
 - Stage overlays  
 - Speech bubbles for team reactions  
 
-## 🏗️ Frontend Architecture Approach
+## 🏗️ Frontend Architecture 
 
-The frontend is structured to separate concerns:
+Separate concerns:
 
 - **Scenes** → high-level flow  
 - **UI modules** → rendering & layout  
