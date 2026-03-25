@@ -12,7 +12,7 @@ My role was to design and write [the backend multi-player game engine](https://g
 
 ## Running Locally
 
-Pre-requisite:  backend locally installed (https://github.com/vertigo1919/eldritch-backend) and running.
+Pre-requisite:  [backend](https://github.com/vertigo1919/eldritch-backend) installed locally and running.
 
 ```bash
 npm install
